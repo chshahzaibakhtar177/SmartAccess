@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Simulate NFC Card Scan</h2>
+    <form method="post">
+        {% csrf_token %}
+        <input type="text" name="card_id" class="form-control mb-3" placeholder="Enter NFC UID">
+        <button type="submit" class="btn btn-primary">Simulate Scan</button>
+    </form>
+
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} mt-3">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endblock %}

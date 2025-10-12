@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+
+    {% if edit_mode %}
+        <h2>Edit Fine</h2>
+    {% else %}
+        <h2>Add a Fine</h2>
+    {% endif %}
+
+    <!-- Add/Edit Fine Form -->
+    <form method="POST" class="mb-4">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">
+            {% if edit_mode %}Update Fine{% else %}Add Fine{% endif %}
+        </button>
+        {% if edit_mode %}
+            <a href="{% url 'add_fine' %}" class="btn btn-secondary ms-2">Cancel</a>
+        {% endif %}
+    </form>
+
+     <!-- Search form -->
+    <form method="GET" class="mb-3">
+        <input type="text" name="search" placeholder="Search by student name or roll number" 
+               value="{{ search_query }}" class="form-control" />
+        <button type="submit" class="btn btn-secondary mt-2">Search</button>
+    </form>
+
+    <hr>
+
+    <h3>All Fines</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Amount</th>
+                <th>Description</th>
+                <th>Date Issued</th>
+                <th>Paid</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fine in fines %}
+                <tr>
+                    <td>{{ fine.student.name }} ({{ fine.student.roll_number }})</td>
+                    <td>{{ fine.amount }}</td>
+                    <td>{{ fine.description }}</td>
+                    <td>{{ fine.date_issued|date:"Y-m-d" }}</td>
+                    <td>
+                        {% if fine.is_paid %}
+                            <span class="badge bg-success">Paid</span>
+                        {% else %}
+                            <span class="badge bg-danger">Unpaid</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'edit_fine' fine.id %}" class="btn btn-sm btn-warning">Edit</a>
+                        
+                        <form method="POST" action="{% url 'delete_fine' fine.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this fine?');">Delete</button>
+                        </form>
+
+                        <form method="POST" action="{% url 'toggle_fine_payment' fine.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            {% if fine.is_paid %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Mark as Unpaid</button>
+                            {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">Mark as Paid</button>
+                            {% endif %}
+                        </form>
+                    </td>
+
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center">No fines found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('.select2').select2({
+            placeholder: 'Search for a student...',
+            minimumInputLength: 2,
+            ajax: {
+                url: "{% url 'student_search_api' %}",
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term // search term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(student) {
+                            return {
+                                id: student.id,
+                                text: student.name + " (" + student.roll_number + ")"
+                            };
+                        })
+                    };
+                },
+                cache: true
+            }
+        });
+    });
+</script>
+
+
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Admin Dashboard</h2>
+        <div>
+            <a href="{% url 'export_logs_csv' %}" class="btn btn-primary">
+                <i class="fas fa-download"></i> Export Logs
+            </a>
+            <a href="{% url 'add_teacher' %}" class="btn btn-success ms-2">
+                <i class="fas fa-user-plus"></i> Add Teacher
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Currently Inside</h5>
+                    <h2>{{ students_inside }}</h2>
+                    <p class="mb-0">of {{ total_students }} total students</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Check-ins</h5>
+                    <h2>{{ today_checkins }}</h2>
+                    <p class="mb-0">{{ late_entries }} late entries</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Check-outs</h5>
+                    <h2>{{ today_checkouts }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Unpaid Fines</h5>
+                    <h2>Rs. {{ unpaid_fines }}</h2>
+                    <p class="mb-0">of Rs. {{ total_fines }} total</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Activity -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Action</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'student_detail' log.student.id %}">
+                                            {{ log.student.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if log.action == 'in' %}success{% else %}danger{% endif %}">
+                                            {{ log.action|upper }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.timestamp|date:"M d, H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Statistics -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Weekly Statistics</h5>
+                </div>
+                <div class="card-body">
+                    {% for day in weekly_logs %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>{{ day.timestamp__date|date:"D, M d" }}</div>
+                        <div>{{ day.entries }} entries</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
