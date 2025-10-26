@@ -27,4 +27,7 @@ urlpatterns = [
     # Alumni Analytics (Admin/Teacher Only)
     path('analytics/', views.alumni_analytics, name='analytics'),
     path('export/', views.export_alumni_data, name='export_data'),
+    
+    # Test and Demo page (Teachers only)
+    path('test-demo/', views.test_demo, name='test_demo'),
 ]

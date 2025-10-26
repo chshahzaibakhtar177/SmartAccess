@@ -168,6 +168,47 @@
                 <a href="{% url 'transportation:dashboard' %}" class="nav-link {% if 'transportation' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-bus"></i> Transportation
                 </a>
+                <div class="dropdown">
+                    <a href="#" class="nav-link dropdown-toggle {% if 'alumni' in request.resolver_match.url_name %}active{% endif %}" 
+                       data-bs-toggle="dropdown" role="button">
+                        <i class="fas fa-graduation-cap"></i> Alumni
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'alumni:dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Alumni Dashboard
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'alumni:register' %}">
+                            <i class="fas fa-user-plus me-2"></i>Register Alumni
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'alumni:directory' %}">
+                            <i class="fas fa-address-book me-2"></i>Alumni Directory
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'alumni:analytics' %}">
+                            <i class="fas fa-chart-bar me-2"></i>Alumni Analytics
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'alumni:test_demo' %}">
+                            <i class="fas fa-cog me-2"></i>Test & Demo
+                        </a></li>
+                    </ul>
+                </div>
+            {% elif request.user.groups.all.0.name == 'Alumni' %}
+                <!-- Alumni Navigation -->
+                <a href="{% url 'alumni:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'alumni:dashboard' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{% url 'alumni:profile' %}" class="nav-link {% if 'alumni:profile' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <a href="{% url 'alumni:events' %}" class="nav-link {% if 'alumni:events' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> Events
+                </a>
+                <a href="{% url 'alumni:directory' %}" class="nav-link {% if 'alumni:directory' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-address-book"></i> Alumni Directory
+                </a>
+                <a href="{% url 'change_password_manual' %}" class="nav-link {% if request.resolver_match.url_name == 'change_password_manual' %}active{% endif %}">
+                    <i class="fas fa-key"></i> Change Password
+                </a>
             {% else %}
                 <!-- Student Navigation -->
                 <a href="{% url 'student_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
@@ -206,6 +247,12 @@
             {% elif request.user.groups.all.0.name == 'Students' %}
                 {% if request.user.student_profile.photo %}
                     <img src="{{ request.user.student_profile.photo.url }}" alt="Profile" class="rounded-circle">
+                {% else %}
+                    <img src="{% static 'images/profile-placeholder.png' %}" alt="Profile" class="rounded-circle">
+                {% endif %}
+            {% elif request.user.groups.all.0.name == 'Alumni' %}
+                {% if request.user.alumni_profile.profile_photo %}
+                    <img src="{{ request.user.alumni_profile.profile_photo.url }}" alt="Profile" class="rounded-circle">
                 {% else %}
                     <img src="{% static 'images/profile-placeholder.png' %}" alt="Profile" class="rounded-circle">
                 {% endif %}

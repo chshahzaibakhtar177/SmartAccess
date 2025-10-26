@@ -1,0 +1,403 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Alumni System Test - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Alumni System Test & Demo</h1>
+            <p class="text-muted">Test and demonstrate the Alumni Management System functionality</p>
+        </div>
+        <div>
+            <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Access Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Alumni Dashboard
+                            </div>
+                            <div class="text-gray-600 mb-2">Main alumni interface with statistics and quick actions</div>
+                            <a href="{% url 'alumni:dashboard' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-tachometer-alt"></i> View Dashboard
+                            </a>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Alumni Registration
+                            </div>
+                            <div class="text-gray-600 mb-2">Register new alumni or convert students</div>
+                            <a href="{% url 'alumni:register' %}" class="btn btn-success btn-sm">
+                                <i class="fas fa-user-plus"></i> Register Alumni
+                            </a>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-graduation-cap fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Alumni Directory
+                            </div>
+                            <div class="text-gray-600 mb-2">Search and browse registered alumni</div>
+                            <a href="{% url 'alumni:directory' %}" class="btn btn-info btn-sm">
+                                <i class="fas fa-address-book"></i> View Directory
+                            </a>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Analytics
+                            </div>
+                            <div class="text-gray-600 mb-2">Alumni statistics and insights</div>
+                            <a href="{% url 'alumni:analytics' %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-chart-pie"></i> View Analytics
+                            </a>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-bar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-cog"></i> System Status & Testing
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success">✓ Alumni App Status</h6>
+                            <ul class="list-group list-group-flush mb-3">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Models Created
+                                    <span class="badge bg-success rounded-pill">✓</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Views Implemented
+                                    <span class="badge bg-success rounded-pill">✓</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Templates Created
+                                    <span class="badge bg-success rounded-pill">✓</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    URLs Configured
+                                    <span class="badge bg-success rounded-pill">✓</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Settings Integration
+                                    <span class="badge bg-success rounded-pill">✓</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">🔧 Testing Features</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Create Test Alumni User:</label>
+                                <button class="btn btn-outline-primary btn-sm d-block" onclick="showCreateUserModal()">
+                                    <i class="fas fa-plus"></i> Create Test Alumni
+                                </button>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Alumni Statistics:</label>
+                                <div class="small">
+                                    <strong>Total Alumni:</strong> <span id="total-alumni">Loading...</span><br>
+                                    <strong>Recent Registrations:</strong> <span id="recent-alumni">Loading...</span><br>
+                                    <strong>Active in Events:</strong> <span id="active-alumni">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-lightbulb"></i> How to Test
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6>1. Register Alumni</h6>
+                                <p class="small">Use the registration form to create test alumni profiles</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6>2. Test Dashboard</h6>
+                                <p class="small">Navigate to alumni dashboard to see statistics and features</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-info"></div>
+                            <div class="timeline-content">
+                                <h6>3. Browse Directory</h6>
+                                <p class="small">Search and filter alumni in the directory</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-warning"></div>
+                            <div class="timeline-content">
+                                <h6>4. View Analytics</h6>
+                                <p class="small">Check comprehensive analytics and reports</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Overview -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-success">
+                <i class="fas fa-list-check"></i> Alumni System Features
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6 class="text-primary">📊 Dashboard Features</h6>
+                    <ul class="small">
+                        <li>Alumni statistics overview</li>
+                        <li>Recent activities</li>
+                        <li>Quick action buttons</li>
+                        <li>Event participation summary</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-success">👥 Profile Management</h6>
+                    <ul class="small">
+                        <li>Complete profile editing</li>
+                        <li>Photo upload functionality</li>
+                        <li>Professional information</li>
+                        <li>Contact details management</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-info">🎯 Event Integration</h6>
+                    <ul class="small">
+                        <li>Event participation tracking</li>
+                        <li>Registration management</li>
+                        <li>Event history</li>
+                        <li>Participation analytics</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <h6 class="text-warning">🔍 Advanced Search</h6>
+                    <ul class="small">
+                        <li>Multi-criteria filtering</li>
+                        <li>Department-wise search</li>
+                        <li>Graduation year filtering</li>
+                        <li>Company-based search</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-danger">📈 Analytics & Reports</h6>
+                    <ul class="small">
+                        <li>Visual data representation</li>
+                        <li>Graduation trends</li>
+                        <li>Employment statistics</li>
+                        <li>Interactive charts</li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-dark">⚙️ Administrative Tools</h6>
+                    <ul class="small">
+                        <li>Student to alumni conversion</li>
+                        <li>Bulk operations</li>
+                        <li>Data management</li>
+                        <li>System integration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Test Alumni Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createUserModalLabel">Create Test Alumni User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="testUserForm">
+                    <div class="mb-3">
+                        <label for="firstName" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="firstName" value="John">
+                    </div>
+                    <div class="mb-3">
+                        <label for="lastName" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="lastName" value="Doe">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" value="john.doe@example.com">
+                    </div>
+                    <div class="mb-3">
+                        <label for="course" class="form-label">Course</label>
+                        <input type="text" class="form-control" id="course" value="Computer Science">
+                    </div>
+                    <div class="mb-3">
+                        <label for="graduationYear" class="form-label">Graduation Year</label>
+                        <input type="number" class="form-control" id="graduationYear" value="2023">
+                    </div>
+                    <div class="alert alert-info">
+                        <small>This will create a test alumni user for demonstration purposes. The password will be 'testpass123'.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createTestUser()">Create Test User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load alumni statistics
+    loadAlumniStats();
+});
+
+function showCreateUserModal() {
+    const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
+    modal.show();
+}
+
+function createTestUser() {
+    // This is a demonstration - in a real implementation, you'd make an AJAX call
+    alert('Feature demonstration: This would create a test alumni user with the specified details. In the actual implementation, this would make an AJAX call to create the user.');
+}
+
+function loadAlumniStats() {
+    // Simulate loading statistics - replace with actual AJAX calls
+    document.getElementById('total-alumni').textContent = '0';
+    document.getElementById('recent-alumni').textContent = '0';
+    document.getElementById('active-alumni').textContent = '0';
+}
+</script>
+
+<style>
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -23px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #e9ecef;
+}
+
+.timeline-content h6 {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

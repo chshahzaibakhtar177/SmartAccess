@@ -21,36 +21,42 @@ from authentication.decorators import teacher_required
 # Alumni Views Implementation
 @login_required
 def alumni_dashboard(request):
-    """Alumni dashboard view"""
+    """Alumni dashboard with statistics and recent activities"""
     try:
         alumni = Alumni.objects.get(user=request.user)
-        
-        # Get alumni statistics
-        total_events_participated = AlumniEventParticipation.objects.filter(alumni=alumni).count()
-        recent_events = AlumniEventParticipation.objects.filter(
-            alumni=alumni
-        ).select_related('event').order_by('-participation_date')[:5]
-        
-        # Get networking connections count
-        networking_connections = AlumniNetworking.objects.filter(
-            Q(alumni1=alumni) | Q(alumni2=alumni)
-        ).count()
-        
-        # Get job postings count
-        job_postings_count = AlumniJobPosting.objects.filter(posted_by=alumni).count()
-        
-        context = {
-            'alumni': alumni,
-            'total_events_participated': total_events_participated,
-            'recent_events': recent_events,
-            'networking_connections': networking_connections,
-            'job_postings_count': job_postings_count,
-        }
-        return render(request, 'alumni/dashboard.html', context)
-        
     except Alumni.DoesNotExist:
-        messages.error(request, 'Alumni profile not found. Please contact administration.')
-        return redirect('dashboards:dashboard')
+        # Check if user is a teacher or student and redirect appropriately
+        if request.user.groups.filter(name='Teachers').exists():
+            messages.info(request, 'Access Alumni features from your teacher dashboard.')
+            return redirect('teacher_dashboard')
+        elif request.user.groups.filter(name='Students').exists():
+            messages.info(request, 'You need to be converted to alumni status to access this feature.')
+            return redirect('student_dashboard')
+        else:
+            messages.error(request, 'You need to have an alumni profile to access this dashboard.')
+            return redirect('home_redirect')
+    
+    # Get recent alumni activities
+    recent_activities = AlumniEventParticipation.objects.filter(
+        alumni=alumni
+    ).select_related('event').order_by('-participation_date')[:5]
+    
+    # Get alumni statistics
+    total_events = AlumniEventParticipation.objects.filter(alumni=alumni).count()
+    
+    # Get upcoming events
+    upcoming_events = Event.objects.filter(
+        date__gte=timezone.now(),
+        is_active=True
+    ).order_by('date')[:5]
+    
+    context = {
+        'alumni': alumni,
+        'recent_activities': recent_activities,
+        'total_events': total_events,
+        'upcoming_events': upcoming_events,
+    }
+    return render(request, 'alumni/dashboard.html', context)
 
 @login_required
 def alumni_profile(request):
@@ -462,3 +468,14 @@ def export_alumni_data(request):
         ])
     
     return response
+
+
+def test_demo(request):
+    """
+    Alumni system test and demo page for teachers.
+    """
+    if not request.user.groups.filter(name='Teachers').exists():
+        messages.error(request, 'Only teachers can access this feature.')
+        return redirect('teacher_dashboard')
+    
+    return render(request, 'alumni/test_demo.html')
