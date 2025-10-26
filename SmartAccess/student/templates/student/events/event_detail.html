@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ event.title }} - SmartAccess Portal{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'event_list' %}">Events</a></li>
+            <li class="breadcrumb-item active">{{ event.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Event Details -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                {% if event.image %}
+                <img src="{{ event.image.url }}" class="card-img-top" alt="{{ event.title }}" style="height: 300px; object-fit: cover;">
+                {% endif %}
+                
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">{{ event.title }}</h3>
+                        <span class="badge badge-{{ event.status }} fs-6">
+                            {{ event.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-calendar text-primary me-2"></i>Date & Time</h6>
+                            <p class="ms-3">
+                                <strong>Start:</strong> {{ event.start_datetime|date:"F d, Y - g:i A" }}<br>
+                                <strong>End:</strong> {{ event.end_datetime|date:"F d, Y - g:i A" }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-map-marker-alt text-primary me-2"></i>Venue</h6>
+                            <p class="ms-3">{{ event.venue }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-tag text-primary me-2"></i>Category</h6>
+                            <span class="badge bg-secondary ms-3">{{ event.category.name }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-user text-primary me-2"></i>Organizer</h6>
+                            <p class="ms-3">{{ event.organizer.name }} ({{ event.organizer.department }})</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6><i class="fas fa-info-circle text-primary me-2"></i>Description</h6>
+                        <div class="ms-3">
+                            {{ event.description|linebreaks }}
+                        </div>
+                    </div>
+
+                    {% if event.registration_fee > 0 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-dollar-sign me-2"></i>
+                        <strong>Registration Fee:</strong> ${{ event.registration_fee }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Registration & Actions -->
+        <div class="col-lg-4">
+            <!-- Registration Status -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-users me-2"></i>Registration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 10px;">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ registration_percentage }}%"></div>
+                    </div>
+                    <p class="text-center mb-3">
+                        <strong>{{ event.registered_count }}</strong> of <strong>{{ event.max_capacity }}</strong> registered
+                    </p>
+
+                    {% if is_student %}
+                        {% if user_registration %}
+                            <div class="alert alert-success text-center">
+                                <i class="fas fa-check-circle me-2"></i>
+                                You are registered for this event
+                                <small class="d-block mt-1">Registered: {{ user_registration.registration_date|date:"M d, Y" }}</small>
+                                {% if user_registration.notes %}
+                                    <div class="mt-2 p-2 bg-light rounded">
+                                        <small class="text-muted d-block mb-1"><i class="fas fa-comment me-1"></i>Your Notes:</small>
+                                        <small>{{ user_registration.notes }}</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if user_attendance %}
+                                <div class="alert alert-info text-center">
+                                    <i class="fas fa-calendar-check me-2"></i>
+                                    Attendance Confirmed
+                                    <small class="d-block mt-1">Checked in: {{ user_attendance.checkin_time|date:"M d, Y - g:i A" }}</small>
+                                </div>
+                            {% elif event.requires_nfc_checkin %}
+                                <div class="alert alert-warning text-center">
+                                    <i class="fas fa-wifi me-2"></i>
+                                    NFC Check-in Required
+                                    <small class="d-block mt-1">Please scan your NFC card at the event venue</small>
+                                </div>
+                            {% endif %}
+
+                            <a href="{% url 'cancel_event_registration' event.id %}" 
+                               class="btn btn-outline-danger w-100"
+                               onclick="return confirm('Are you sure you want to cancel your registration?')">
+                                <i class="fas fa-times me-2"></i>Cancel Registration
+                            </a>
+                        {% elif can_register %}
+                            <a href="{% url 'register_for_event' event.id %}" class="btn btn-primary w-100">
+                                <i class="fas fa-user-plus me-2"></i>Register Now
+                            </a>
+                        {% else %}
+                            {% if not event.is_registration_open %}
+                                <div class="alert alert-warning text-center">
+                                    <i class="fas fa-clock me-2"></i>
+                                    Registration Closed
+                                </div>
+                            {% elif event.registered_count >= event.max_capacity %}
+                                <div class="alert alert-danger text-center">
+                                    <i class="fas fa-users-slash me-2"></i>
+                                    Event Full
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Login as a student to register
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Event Info -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5><i class="fas fa-info me-2"></i>Event Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-clock text-muted me-2"></i>
+                            <strong>Registration Deadline:</strong><br>
+                            <small class="ms-3">{{ event.registration_deadline|date:"F d, Y - g:i A" }}</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-users text-muted me-2"></i>
+                            <strong>Capacity:</strong> {{ event.max_capacity }} participants
+                        </li>
+                        {% if event.requires_nfc_checkin %}
+                        <li class="mb-2">
+                            <i class="fas fa-wifi text-muted me-2"></i>
+                            <strong>NFC Check-in:</strong> Required
+                        </li>
+                        {% endif %}
+                        <li class="mb-2">
+                            <i class="fas fa-calendar-plus text-muted me-2"></i>
+                            <strong>Created:</strong><br>
+                            <small class="ms-3">{{ event.created_at|date:"F d, Y" }}</small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Admin Actions -->
+            {% if user.is_superuser or user.teacher_profile == event.organizer %}
+            <div class="card shadow-sm mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-cog me-2"></i>Manage Event</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'edit_event' event.id %}" class="btn btn-outline-primary w-100 mb-2">
+                        <i class="fas fa-edit me-2"></i>Edit Event
+                    </a>
+                    <button class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                        <i class="fas fa-chart-bar me-2"></i>View Attendance
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Modal (for organizers) -->
+{% if user.is_superuser or user.teacher_profile == event.organizer %}
+<div class="modal fade" id="attendanceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Event Attendance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row text-center mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <h3>{{ event.registered_count }}</h3>
+                                <p>Registered</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h3>{{ event.checked_in_count }}</h3>
+                                <p>Checked In</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h3>{{ event.attendance_percentage }}%</h3>
+                                <p>Attendance Rate</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if is_event_organizer and registered_students %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>Registered Students
+                        <span class="badge bg-primary ms-2">{{ attendance_stats.total_registered }}</span>
+                    </h5>
+                    {% if attendance_stats.total_registered > 0 %}
+                        <div class="d-flex gap-3">
+                            <span class="badge bg-success">
+                                <i class="fas fa-check me-1"></i>Attended: {{ attendance_stats.total_attended }}
+                            </span>
+                            <span class="badge bg-info">
+                                Attendance Rate: {{ attendance_stats.attendance_rate }}%
+                            </span>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if registered_students %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Roll Number</th>
+                                        <th>Registration Date</th>
+                                        <th>Status</th>
+                                        <th>Attendance</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registration in registered_students %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if registration.student.photo %}
+                                                    <img src="{{ registration.student.photo.url }}" 
+                                                         alt="{{ registration.student.user.get_full_name }}"
+                                                         class="rounded-circle me-2" 
+                                                         style="width: 32px; height: 32px; object-fit: cover;">
+                                                {% else %}
+                                                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2"
+                                                         style="width: 32px; height: 32px;">
+                                                        <i class="fas fa-user text-white" style="font-size: 14px;"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    <div class="fw-semibold">{{ registration.student.user.get_full_name }}</div>
+                                                    <small class="text-muted">{{ registration.student.department }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="fw-mono">{{ registration.student.roll_number }}</td>
+                                        <td>{{ registration.registration_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if registration.status == 'confirmed' %}
+                                                <span class="badge bg-success">Confirmed</span>
+                                            {% elif registration.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% elif registration.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% elif registration.status == 'waitlist' %}
+                                                <span class="badge bg-info">Waitlist</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if registration.attendance %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>Present
+                                                </span>
+                                                <small class="d-block text-muted mt-1">
+                                                    {{ registration.attendance.checkin_time|date:"g:i A" }}
+                                                </small>
+                                            {% else %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-clock me-1"></i>Not Checked In
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if registration.notes %}
+                                                <div class="position-relative">
+                                                    <i class="fas fa-comment text-primary" 
+                                                       data-bs-toggle="tooltip" 
+                                                       data-bs-placement="top"
+                                                       title="{{ registration.notes }}"></i>
+                                                    <div class="d-none d-lg-block mt-1">
+                                                        <small class="text-muted">{{ registration.notes|truncatechars:50 }}</small>
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-users fa-3x mb-3"></i>
+                            <h6>No students registered yet</h6>
+                            <p>Students will appear here once they register for this event.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                {% if registered_students %}
+                <div class="card-footer bg-light">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Total Registrations</small>
+                            <strong>{{ attendance_stats.total_registered }}</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Attended</small>
+                            <strong class="text-success">{{ attendance_stats.total_attended }}</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Pending Check-in</small>
+                            <strong class="text-warning">{{ attendance_stats.pending_checkin }}</strong>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.badge-upcoming {
+    background-color: #28a745 !important;
+}
+.badge-ongoing {
+    background-color: #17a2b8 !important;
+}
+.badge-completed {
+    background-color: #6c757d !important;
+}
+.badge-cancelled {
+    background-color: #dc3545 !important;
+}
+.fw-mono {
+    font-family: 'Courier New', monospace;
+}
+</style>
+
+<script>
+// Initialize tooltips for notes
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

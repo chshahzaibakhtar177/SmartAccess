@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Overdue Books Report - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1 text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Overdue Books Report
+                    </h2>
+                    <p class="text-muted mb-0">Books that are past their due date and require attention</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary" onclick="printReport()">
+                        <i class="fas fa-print me-2"></i>Print Report
+                    </button>
+                    <button type="button" class="btn btn-outline-success" onclick="exportToCSV()">
+                        <i class="fas fa-download me-2"></i>Export CSV
+                    </button>
+                    <a href="{% url 'library_dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Library
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-danger shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-danger mb-2">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <h3 class="text-danger mb-1">{{ total_overdue }}</h3>
+                    <p class="text-muted mb-0">Total Overdue Books</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-warning shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-warning mb-2">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                    <h3 class="text-warning mb-1">{{ total_students }}</h3>
+                    <p class="text-muted mb-0">Students Affected</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-info shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-info mb-2">
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
+                    <h3 class="text-info mb-1">${{ total_fines|floatformat:2 }}</h3>
+                    <p class="text-muted mb-0">Total Fines</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-dark shadow-sm">
+                <div class="card-body text-center">
+                    <div class="text-dark mb-2">
+                        <i class="fas fa-calendar-alt fa-2x"></i>
+                    </div>
+                    <h3 class="text-dark mb-1">{{ avg_overdue_days|floatformat:1 }}</h3>
+                    <p class="text-muted mb-0">Avg Days Overdue</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter and Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="student_search" class="form-label">Search Student</label>
+                            <input type="text" class="form-control" id="student_search" name="student" 
+                                   value="{{ request.GET.student }}" 
+                                   placeholder="Student name or roll number...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="min_days" class="form-label">Min Days Overdue</label>
+                            <input type="number" class="form-control" id="min_days" name="min_days" 
+                                   value="{{ request.GET.min_days }}" 
+                                   placeholder="e.g., 7">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="sort_by" class="form-label">Sort By</label>
+                            <select class="form-select" name="sort_by" id="sort_by">
+                                <option value="days_overdue" {% if request.GET.sort_by == 'days_overdue' %}selected{% endif %}>Days Overdue</option>
+                                <option value="fine_amount" {% if request.GET.sort_by == 'fine_amount' %}selected{% endif %}>Fine Amount</option>
+                                <option value="student_name" {% if request.GET.sort_by == 'student_name' %}selected{% endif %}>Student Name</option>
+                                <option value="book_title" {% if request.GET.sort_by == 'book_title' %}selected{% endif %}>Book Title</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-filter me-2"></i>Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Books Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Overdue Books Details
+                        <span class="badge bg-white text-danger ms-2">{{ overdue_books.count }} records</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if overdue_books %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="overdueTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Book</th>
+                                        <th>Due Date</th>
+                                        <th>Days Overdue</th>
+                                        <th>Fine Amount</th>
+                                        <th>Contact</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for borrowing in overdue_books %}
+                                    <tr class="{% if borrowing.days_overdue > 30 %}table-danger{% elif borrowing.days_overdue > 14 %}table-warning{% endif %}">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if borrowing.student.photo %}
+                                                    <img src="{{ borrowing.student.photo.url }}" 
+                                                         alt="{{ borrowing.student.name }}"
+                                                         class="rounded-circle me-2" 
+                                                         style="width: 40px; height: 40px; object-fit: cover;">
+                                                {% else %}
+                                                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2"
+                                                         style="width: 40px; height: 40px;">
+                                                        <i class="fas fa-user text-white"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    <div class="fw-semibold">{{ borrowing.student.name }}</div>
+                                                    <small class="text-muted">{{ borrowing.student.roll_number }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div class="fw-semibold">{{ borrowing.book.title|truncatechars:40 }}</div>
+                                                <small class="text-muted">{{ borrowing.book.author }} • {{ borrowing.book.isbn }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="text-danger fw-bold">{{ borrowing.due_date|date:"M d, Y" }}</span>
+                                            <br><small class="text-muted">{{ borrowing.borrow_date|date:"M d, Y" }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if borrowing.days_overdue > 30 %}danger{% elif borrowing.days_overdue > 14 %}warning{% else %}secondary{% endif %} fs-6">
+                                                {{ borrowing.days_overdue }} days
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong class="text-danger">${{ borrowing.fine_amount|floatformat:2 }}</strong>
+                                        </td>
+                                        <td>
+                                            <div class="small">
+                                                <div><i class="fas fa-envelope text-muted me-1"></i>{{ borrowing.student.email|truncatechars:25 }}</div>
+                                                {% if borrowing.student.phone %}
+                                                    <div><i class="fas fa-phone text-muted me-1"></i>{{ borrowing.student.phone }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group-vertical btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-primary mb-1" 
+                                                        onclick="sendReminder({{ borrowing.pk }})" 
+                                                        title="Send Reminder">
+                                                    <i class="fas fa-envelope"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success mb-1" 
+                                                        onclick="markAsReturned({{ borrowing.pk }})" 
+                                                        title="Mark as Returned">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="viewDetails({{ borrowing.pk }})" 
+                                                        title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if overdue_books.has_other_pages %}
+                        <div class="card-footer bg-light">
+                            <nav>
+                                <ul class="pagination justify-content-center mb-0">
+                                    {% if overdue_books.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">First</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ overdue_books.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                                        </li>
+                                    {% endif %}
+
+                                    <li class="page-item active">
+                                        <span class="page-link">
+                                            Page {{ overdue_books.number }} of {{ overdue_books.paginator.num_pages }}
+                                        </span>
+                                    </li>
+
+                                    {% if overdue_books.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ overdue_books.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ overdue_books.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Last</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="text-success mb-3">
+                                <i class="fas fa-check-circle fa-4x"></i>
+                            </div>
+                            <h4 class="text-success">No Overdue Books!</h4>
+                            <p class="text-muted">All books are returned on time or within the due date.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions -->
+    {% if overdue_books %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-warning">
+                    <h6 class="mb-0 text-dark">
+                        <i class="fas fa-tools me-2"></i>Bulk Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="sendAllReminders()">
+                                <i class="fas fa-envelope-bulk me-2"></i>Send All Reminders
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <button type="button" class="btn btn-outline-info w-100" onclick="generateFineReport()">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>Generate Fine Report
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <button type="button" class="btn btn-outline-secondary w-100" onclick="scheduleFollowUp()">
+                                <i class="fas fa-calendar-plus me-2"></i>Schedule Follow-up
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Reminder Modal -->
+<div class="modal fade" id="reminderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Send Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reminderForm">
+                    <div class="mb-3">
+                        <label for="reminderType" class="form-label">Reminder Type</label>
+                        <select class="form-select" id="reminderType" required>
+                            <option value="email">Email</option>
+                            <option value="sms">SMS (if available)</option>
+                            <option value="both">Both Email & SMS</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reminderMessage" class="form-label">Custom Message (Optional)</label>
+                        <textarea class="form-control" id="reminderMessage" rows="3" 
+                                  placeholder="Add a personal message to the standard reminder..."></textarea>
+                    </div>
+                    <input type="hidden" id="borrowingId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSendReminder()">
+                    <i class="fas fa-paper-plane me-2"></i>Send Reminder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Send individual reminder
+function sendReminder(borrowingId) {
+    document.getElementById('borrowingId').value = borrowingId;
+    new bootstrap.Modal(document.getElementById('reminderModal')).show();
+}
+
+function confirmSendReminder() {
+    const borrowingId = document.getElementById('borrowingId').value;
+    const reminderType = document.getElementById('reminderType').value;
+    const message = document.getElementById('reminderMessage').value;
+    
+    fetch(`/library/send-reminder/${borrowingId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({
+            'reminder_type': reminderType,
+            'custom_message': message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Reminder sent successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('reminderModal')).hide();
+        } else {
+            showAlert(data.error || 'Failed to send reminder', 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('An error occurred while sending the reminder', 'error');
+    });
+}
+
+// Mark as returned
+function markAsReturned(borrowingId) {
+    if (confirm('Mark this book as returned? This will calculate any applicable fines.')) {
+        fetch(`/library/mark-returned/${borrowingId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Book marked as returned successfully!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert(data.error || 'Failed to mark book as returned', 'error');
+            }
+        });
+    }
+}
+
+// View details
+function viewDetails(borrowingId) {
+    // Redirect to borrowing details page or show modal with details
+    window.location.href = `/library/borrowing-details/${borrowingId}/`;
+}
+
+// Bulk actions
+function sendAllReminders() {
+    if (confirm('Send reminders to all students with overdue books?')) {
+        fetch('/library/send-bulk-reminders/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(`Reminders sent to ${data.count} students successfully!`, 'success');
+            } else {
+                showAlert(data.error || 'Failed to send bulk reminders', 'error');
+            }
+        });
+    }
+}
+
+function generateFineReport() {
+    window.open('/library/fine-report/', '_blank');
+}
+
+function scheduleFollowUp() {
+    alert('Follow-up scheduling feature will be implemented in the next version.');
+}
+
+// Export functions
+function printReport() {
+    window.print();
+}
+
+function exportToCSV() {
+    const table = document.getElementById('overdueTable');
+    let csv = [];
+    
+    // Header
+    const headers = [];
+    table.querySelectorAll('thead th').forEach(th => {
+        headers.push(th.textContent.trim());
+    });
+    csv.push(headers.join(','));
+    
+    // Data rows
+    table.querySelectorAll('tbody tr').forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('td').forEach((td, index) => {
+            if (index < 6) { // Exclude actions column
+                rowData.push('"' + td.textContent.trim().replace(/"/g, '""') + '"');
+            }
+        });
+        csv.push(rowData.join(','));
+    });
+    
+    // Download
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'overdue_books_report.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function showAlert(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
+             style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            <i class="fas fa-${icon} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    setTimeout(() => {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+            bootstrap.Alert.getOrCreateInstance(alert).close();
+        }
+    }, 5000);
+}
+
+// Auto-submit form on filter changes
+document.getElementById('sort_by').addEventListener('change', function() {
+    this.form.submit();
+});
+
+// Print styles
+const style = document.createElement('style');
+style.textContent = `
+    @media print {
+        .btn, .pagination, .card-header, .modal { display: none !important; }
+        .card { border: none !important; box-shadow: none !important; }
+        .table { font-size: 12px; }
+        .container-fluid { max-width: 100% !important; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

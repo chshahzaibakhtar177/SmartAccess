@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Register for {{ event.title }} - SmartAccess Portal{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'event_list' %}">Events</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'event_detail' event.id %}">{{ event.title }}</a></li>
+            <li class="breadcrumb-item active">Register</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Event Summary -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Event Summary</h5>
+                </div>
+                <div class="card-body">
+                    {% if event.image %}
+                    <img src="{{ event.image.url }}" class="card-img-top mb-3" alt="{{ event.title }}" style="height: 200px; object-fit: cover;">
+                    {% endif %}
+                    
+                    <h4 class="text-primary">{{ event.title }}</h4>
+                    <p class="text-muted mb-3">{{ event.description|truncatewords:30 }}</p>
+                    
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Date:</strong></div>
+                        <div class="col-sm-8">{{ event.start_datetime|date:"F d, Y" }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Time:</strong></div>
+                        <div class="col-sm-8">{{ event.start_datetime|date:"g:i A" }} - {{ event.end_datetime|date:"g:i A" }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Venue:</strong></div>
+                        <div class="col-sm-8">{{ event.venue }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Organizer:</strong></div>
+                        <div class="col-sm-8">{{ event.organizer.name }}</div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Category:</strong></div>
+                        <div class="col-sm-8">
+                            <span class="badge bg-secondary">{{ event.category.name }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if event.registration_fee > 0 %}
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Fee:</strong></div>
+                        <div class="col-sm-8 text-success fw-bold">${{ event.registration_fee }}</div>
+                    </div>
+                    {% else %}
+                    <div class="row mb-2">
+                        <div class="col-sm-4"><strong>Fee:</strong></div>
+                        <div class="col-sm-8 text-success fw-bold">FREE</div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Capacity:</strong></div>
+                        <div class="col-sm-8">
+                            {{ event.registered_count }}/{{ event.max_capacity }} registered
+                            <div class="progress mt-1" style="height: 6px;">
+                                <div class="progress-bar bg-info" role="progressbar" 
+                                     style="width: {{ registration_percentage }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if event.requires_nfc_checkin %}
+            <div class="alert alert-info">
+                <i class="fas fa-wifi me-2"></i>
+                <strong>NFC Check-in Required:</strong> You will need to scan your NFC card at the event venue for attendance confirmation.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Registration Form -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Event Registration</h5>
+                </div>
+                
+                <div class="card-body">
+                    <div class="alert alert-light border">
+                        <div class="d-flex align-items-center">
+                            <img src="{% if user.student_profile.photo %}{{ user.student_profile.photo.url }}{% else %}https://via.placeholder.com/60{% endif %}" 
+                                 class="rounded-circle me-3" width="60" height="60" alt="Profile">
+                            <div>
+                                <h6 class="mb-1">{{ user.student_profile.name }}</h6>
+                                <small class="text-muted">Roll Number: {{ user.student_profile.roll_number }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                <i class="fas fa-comment me-2"></i>Additional Notes (Optional)
+                            </label>
+                            {{ form.notes }}
+                            <small class="form-text text-muted">
+                                Please mention any special requirements, dietary restrictions, or other relevant information.
+                            </small>
+                            {% if form.notes.errors %}
+                                <div class="text-danger small">{{ form.notes.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if event.registration_fee > 0 %}
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-credit-card me-2"></i>Payment Information</h6>
+                            <p class="mb-2">Registration fee: <strong>${{ event.registration_fee }}</strong></p>
+                            <p class="mb-0 small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Payment will be processed separately. You will receive payment instructions after registration confirmation.
+                            </p>
+                        </div>
+                        {% endif %}
+
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-clipboard-check me-2"></i>Registration Terms</h6>
+                            <ul class="mb-0 small">
+                                <li>Registration is subject to availability</li>
+                                <li>You may cancel your registration up to 24 hours before the event</li>
+                                {% if event.requires_nfc_checkin %}
+                                <li>NFC card scanning is required for attendance confirmation</li>
+                                {% endif %}
+                                <li>Event organizers reserve the right to make changes to the schedule</li>
+                            </ul>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                            <label class="form-check-label" for="agreeTerms">
+                                I agree to the registration terms and conditions
+                            </label>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'event_detail' event.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Event
+                            </a>
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="fas fa-user-plus me-2"></i>Complete Registration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Auto-resize textarea
+    const textarea = document.getElementById('{{ form.notes.id_for_label }}');
+    if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    }
+    
+    // Form validation
+    $('form').on('submit', function(e) {
+        if (!$('#agreeTerms').is(':checked')) {
+            e.preventDefault();
+            alert('Please agree to the registration terms and conditions.');
+            return false;
+        }
+    });
+});
+</script>
+
+{% endblock %}

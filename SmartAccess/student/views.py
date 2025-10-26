@@ -1,4 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404, HttpResponse
+from django.http import JsonResponse
+from django.db import models
 from django.contrib.auth.decorators import login_required
 from .decorators import student_required, teacher_required
 from django.contrib.auth.models import User, Group
@@ -23,8 +25,11 @@ from django.utils.timezone import now
 from django.db.models import Count
 from django.db.models import Max
 
-from .forms import StudentForm, FineForm, TeacherCreationForm, StudentPhotoForm, TeacherPhotoForm
-from .models import Student, Fine, EntryLog, Teacher
+from .forms import (StudentForm, FineForm, TeacherCreationForm, StudentPhotoForm, TeacherPhotoForm, 
+                    EventForm, EventCategoryForm, EventRegistrationForm, EventAttendanceForm, EventSearchForm,
+                    BookForm, BookCategoryForm, BookBorrowForm, BookReturnForm, BookReservationForm, BookSearchForm)
+from .models import (Student, Fine, EntryLog, Teacher, Event, EventCategory, EventRegistration, EventAttendance,
+                     Book, BookCategory, BookBorrow, BookReservation)
 from django.http import JsonResponse
 from django.contrib.auth.views import PasswordResetView, PasswordResetConfirmView
 from django.urls import reverse_lazy
@@ -871,3 +876,861 @@ def request_card_scan_from_pi(roll_number):
         return {'success': False, 'error': 'Scanner timeout - no card detected within 30 seconds'}
     except Exception as e:
         return {'success': False, 'error': f'Scanner error: {str(e)}'}
+
+
+# ========================
+# EVENT MANAGEMENT VIEWS
+# ========================
+
+@login_required
+def event_list(request):
+    """List all events with filtering and search functionality"""
+    form = EventSearchForm(request.GET)
+    events = Event.objects.filter(is_active=True)
+    
+    # Apply search filters
+    if form.is_valid():
+        search_query = form.cleaned_data.get('search_query')
+        category = form.cleaned_data.get('category')
+        status = form.cleaned_data.get('status')
+        
+        if search_query:
+            events = events.filter(
+                Q(title__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(venue__icontains=search_query)
+            )
+        
+        if category:
+            events = events.filter(category=category)
+        
+        if status and status != 'all':
+            events = events.filter(status=status)
+    
+    # Pagination
+    paginator = Paginator(events, 10)  # 10 events per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'form': form,
+        'total_events': events.count()
+    }
+    return render(request, 'student/events/event_list.html', context)
+
+
+@login_required
+def event_detail(request, event_id):
+    """View event details and handle registration"""
+    event = get_object_or_404(Event, id=event_id, is_active=True)
+    user_registration = None
+    user_attendance = None
+    registered_students = None
+    attendance_stats = None
+    
+    # Check if user is a student
+    if hasattr(request.user, 'student_profile'):
+        try:
+            user_registration = EventRegistration.objects.get(
+                event=event, 
+                student=request.user.student_profile
+            )
+            # Check if they attended
+            try:
+                user_attendance = EventAttendance.objects.get(
+                    event=event,
+                    student=request.user.student_profile
+                )
+            except EventAttendance.DoesNotExist:
+                pass
+        except EventRegistration.DoesNotExist:
+            pass
+    
+    # If user is a teacher and event organizer, show registered students
+    is_teacher = hasattr(request.user, 'teacher_profile')
+    is_event_organizer = is_teacher and event.organizer == request.user.teacher_profile
+    
+    if is_event_organizer:
+        # Get all registered students with their attendance status
+        registered_students = EventRegistration.objects.filter(
+            event=event,
+            status__in=['confirmed', 'pending']
+        ).select_related('student__user', 'attendance').order_by('registration_date')
+        
+        # Calculate attendance statistics
+        total_registered = registered_students.count()
+        total_attended = EventAttendance.objects.filter(event=event).count()
+        attendance_stats = {
+            'total_registered': total_registered,
+            'total_attended': total_attended,
+            'pending_checkin': total_registered - total_attended,
+            'attendance_rate': round((total_attended / total_registered * 100) if total_registered > 0 else 0, 1)
+        }
+    
+    # Calculate registration percentage
+    registration_percentage = 0
+    if event.max_capacity > 0:
+        registration_percentage = round((event.registered_count / event.max_capacity) * 100, 1)
+    
+    context = {
+        'event': event,
+        'user_registration': user_registration,
+        'user_attendance': user_attendance,
+        'can_register': event.is_registration_open and not user_registration,
+        'is_student': hasattr(request.user, 'student_profile'),
+        'is_teacher': is_teacher,
+        'is_event_organizer': is_event_organizer,
+        'registered_students': registered_students,
+        'attendance_stats': attendance_stats,
+        'registration_percentage': registration_percentage
+    }
+    return render(request, 'student/events/event_detail.html', context)
+
+
+@login_required
+@teacher_required
+def create_event(request):
+    """Create a new event (Teachers and Admin only)"""
+    if request.method == 'POST':
+        form = EventForm(request.POST, request.FILES)
+        if form.is_valid():
+            event = form.save(commit=False)
+            # Set the organizer to current teacher
+            if hasattr(request.user, 'teacher_profile'):
+                event.organizer = request.user.teacher_profile
+            event.save()
+            messages.success(request, f'Event "{event.title}" created successfully!')
+            return redirect('event_detail', event_id=event.id)
+    else:
+        form = EventForm()
+    
+    return render(request, 'student/events/create_event.html', {'form': form})
+
+
+@login_required
+@teacher_required
+def edit_event(request, event_id):
+    """Edit an existing event (Teachers and Admin only)"""
+    event = get_object_or_404(Event, id=event_id)
+    
+    # Check if user can edit this event
+    if not request.user.is_superuser and event.organizer != request.user.teacher_profile:
+        messages.error(request, 'You can only edit events you created.')
+        return redirect('event_detail', event_id=event.id)
+    
+    if request.method == 'POST':
+        form = EventForm(request.POST, request.FILES, instance=event)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Event "{event.title}" updated successfully!')
+            return redirect('event_detail', event_id=event.id)
+    else:
+        form = EventForm(instance=event)
+    
+    context = {
+        'form': form,
+        'event': event,
+        'editing': True
+    }
+    return render(request, 'student/events/create_event.html', context)
+
+
+@login_required
+@student_required
+def register_for_event(request, event_id):
+    """Register student for an event"""
+    event = get_object_or_404(Event, id=event_id, is_active=True)
+    student = request.user.student_profile
+    
+    # Check if registration is open
+    if not event.is_registration_open:
+        messages.error(request, 'Registration is closed for this event.')
+        return redirect('event_detail', event_id=event.id)
+    
+    # Check if already registered
+    if EventRegistration.objects.filter(event=event, student=student).exists():
+        messages.warning(request, 'You are already registered for this event.')
+        return redirect('event_detail', event_id=event.id)
+    
+    # Check capacity
+    if event.registered_count >= event.max_capacity:
+        messages.error(request, 'This event has reached maximum capacity.')
+        return redirect('event_detail', event_id=event.id)
+    
+    if request.method == 'POST':
+        form = EventRegistrationForm(request.POST)
+        if form.is_valid():
+            registration = form.save(commit=False)
+            registration.event = event
+            registration.student = student
+            registration.status = 'confirmed'  # Auto-confirm for now
+            registration.save()
+            
+            messages.success(request, f'Successfully registered for "{event.title}"!')
+            return redirect('event_detail', event_id=event.id)
+    else:
+        form = EventRegistrationForm()
+    
+    # Calculate registration percentage
+    registration_percentage = 0
+    if event.max_capacity > 0:
+        registration_percentage = round((event.registered_count / event.max_capacity) * 100, 1)
+    
+    context = {
+        'form': form,
+        'event': event,
+        'registration_percentage': registration_percentage
+    }
+    return render(request, 'student/events/register_event.html', context)
+
+
+@login_required
+def cancel_event_registration(request, event_id):
+    """Cancel event registration"""
+    event = get_object_or_404(Event, id=event_id)
+    student = request.user.student_profile
+    
+    try:
+        registration = EventRegistration.objects.get(event=event, student=student)
+        registration.delete()
+        messages.success(request, f'Registration for "{event.title}" cancelled successfully.')
+    except EventRegistration.DoesNotExist:
+        messages.error(request, 'No registration found for this event.')
+    
+    return redirect('event_detail', event_id=event.id)
+
+
+@csrf_exempt
+@login_required
+def event_nfc_checkin_api(request):
+    """API endpoint for NFC-based event check-in"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'})
+    
+    try:
+        data = json.loads(request.body)
+        card_id = data.get('card_id')
+        event_id = data.get('event_id')
+        
+        if not card_id or not event_id:
+            return JsonResponse({'success': False, 'error': 'Missing card_id or event_id'})
+        
+        # Find student by NFC UID
+        try:
+            student = Student.objects.get(nfc_uid=card_id)
+        except Student.DoesNotExist:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Student not found. Please register this NFC card first.'
+            })
+        
+        # Find event
+        try:
+            event = Event.objects.get(id=event_id, is_active=True)
+        except Event.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Event not found or inactive'})
+        
+        # Check if student is registered for this event
+        try:
+            registration = EventRegistration.objects.get(
+                event=event, 
+                student=student,
+                status='confirmed'
+            )
+        except EventRegistration.DoesNotExist:
+            return JsonResponse({
+                'success': False, 
+                'error': f'Student {student.name} is not registered for this event'
+            })
+        
+        # Check if already checked in
+        if EventAttendance.objects.filter(event=event, student=student).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Student {student.name} already checked in for this event'
+            })
+        
+        # Create attendance record
+        attendance = EventAttendance.objects.create(
+            event=event,
+            student=student,
+            registration=registration,
+            checkin_method='nfc'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Check-in successful for {student.name}',
+            'student_name': student.name,
+            'student_roll': student.roll_number,
+            'event_title': event.title,
+            'checkin_time': attendance.checkin_time.strftime('%Y-%m-%d %H:%M:%S')
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'})
+
+# ========================
+# LIBRARY MANAGEMENT VIEWS
+# ========================
+
+@login_required
+def library_dashboard(request):
+    """Library management dashboard"""
+    # Get library statistics
+    total_books = Book.objects.count()
+    available_books = Book.objects.filter(status='available').count()
+    borrowed_books = Book.objects.filter(status='borrowed').count()
+    overdue_books = BookBorrow.objects.filter(status='overdue').count()
+    
+    # Recent borrowings
+    recent_borrowings = BookBorrow.objects.select_related(
+        'book', 'student__user'
+    ).order_by('-borrow_date')[:10]
+    
+    # Books due soon (next 3 days)
+    from datetime import date, timedelta
+    due_soon = BookBorrow.objects.filter(
+        status='active',
+        due_date__lte=date.today() + timedelta(days=3)
+    ).select_related('book', 'student__user').order_by('due_date')
+    
+    # Popular books (most borrowed)
+    from django.db.models import Count
+    popular_books = Book.objects.annotate(
+        borrow_count=Count('borrows')
+    ).order_by('-borrow_count')[:5]
+    
+    context = {
+        'total_books': total_books,
+        'available_books': available_books,
+        'borrowed_books': borrowed_books,
+        'overdue_books': overdue_books,
+        'recent_borrowings': recent_borrowings,
+        'due_soon': due_soon,
+        'popular_books': popular_books,
+    }
+    return render(request, 'student/library/dashboard.html', context)
+
+@login_required
+def book_list(request):
+    """List all books with search and filter functionality"""
+    books = Book.objects.select_related('category').order_by('title')
+    categories = BookCategory.objects.all()
+    
+    # Handle both form and raw GET parameters
+    search_query = request.GET.get('search', '').strip()
+    selected_category = request.GET.get('category', '')
+    selected_status = request.GET.get('status', '')
+    
+    # Apply filters
+    if search_query:
+        books = books.filter(
+            models.Q(title__icontains=search_query) |
+            models.Q(author__icontains=search_query) |
+            models.Q(isbn__icontains=search_query)
+        )
+    
+    if selected_category:
+        try:
+            category_id = int(selected_category)
+            books = books.filter(category_id=category_id)
+        except ValueError:
+            pass
+    
+    if selected_status and selected_status != '':
+        books = books.filter(status=selected_status)
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(books, 20)  # Show 20 books per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    total_books = Book.objects.count()
+    
+    context = {
+        'page_obj': page_obj,
+        'books': page_obj.object_list,
+        'categories': categories,
+        'search_query': search_query,
+        'selected_category': selected_category,
+        'selected_status': selected_status,
+        'total_books': total_books,
+    }
+    return render(request, 'student/library/book_list.html', context)
+
+@login_required
+def book_detail(request, pk):
+    """View book details and handle reservations"""
+    book = get_object_or_404(Book, id=pk)
+    user_reservation = None
+    user_borrow = None
+    
+    # Check if user is a student
+    if hasattr(request.user, 'student_profile'):
+        # Check existing reservation
+        try:
+            user_reservation = BookReservation.objects.get(
+                book=book,
+                student=request.user.student_profile,
+                status='pending'
+            )
+        except BookReservation.DoesNotExist:
+            pass
+        
+        # Check if currently borrowed by user
+        try:
+            user_borrow = BookBorrow.objects.get(
+                book=book,
+                student=request.user.student_profile,
+                status__in=['active', 'overdue']
+            )
+        except BookBorrow.DoesNotExist:
+            pass
+    
+    # Get borrowing history
+    borrow_history = BookBorrow.objects.filter(
+        book=book
+    ).select_related('student__user').order_by('-borrow_date')[:5]
+    
+    context = {
+        'book': book,
+        'user_reservation': user_reservation,
+        'user_borrow': user_borrow,
+        'can_reserve': book.status == 'borrowed' and not user_reservation and not user_borrow,
+        'can_borrow': book.status == 'available' and not user_borrow,
+        'borrow_history': borrow_history,
+    }
+    return render(request, 'student/library/book_detail.html', context)
+
+@login_required
+@teacher_required
+@login_required
+@teacher_required
+def add_book(request):
+    """Add new book to library (Teachers and Admin only)"""
+    if request.method == 'POST':
+        form = BookForm(request.POST, request.FILES)
+        if form.is_valid():
+            book = form.save()
+            messages.success(request, f'Book "{book.title}" added successfully!')
+            return redirect('book_detail', pk=book.id)
+    else:
+        form = BookForm()
+    
+    return render(request, 'student/library/book_form.html', {'form': form})
+
+@login_required
+@teacher_required
+def edit_book(request, pk):
+    """Edit existing book (Teachers and Admin only)"""
+    book = get_object_or_404(Book, id=pk)
+    
+    if request.method == 'POST':
+        form = BookForm(request.POST, request.FILES, instance=book)
+        if form.is_valid():
+            book = form.save()
+            messages.success(request, f'Book "{book.title}" updated successfully!')
+            return redirect('book_detail', pk=book.id)
+    else:
+        form = BookForm(instance=book)
+    
+    context = {'form': form, 'book': book}
+    return render(request, 'student/library/book_form.html', context)
+
+@login_required
+@teacher_required
+def delete_book(request, pk):
+    """Delete book (Teachers and Admin only)"""
+    book = get_object_or_404(Book, id=pk)
+    
+    # Check if book has active borrowings
+    if BookBorrow.objects.filter(book=book, status__in=['active', 'overdue']).exists():
+        messages.error(request, f'Cannot delete "{book.title}" - book is currently borrowed.')
+        return redirect('book_detail', pk=book.id)
+    
+    if request.method == 'POST':
+        title = book.title
+        book.delete()
+        messages.success(request, f'Book "{title}" deleted successfully!')
+        return redirect('book_list')
+    
+    return render(request, 'student/library/delete_book.html', {'book': book})
+
+@login_required
+@student_required
+def borrow_book(request, pk):
+    """Borrow a book (Students only)"""
+    book = get_object_or_404(Book, id=pk)
+    student = request.user.student_profile
+    
+    # Check if book is available
+    if book.status != 'available':
+        messages.error(request, f'"{book.title}" is not available for borrowing.')
+        return redirect('book_detail', pk=book.id)
+    
+    # Check if student already has this book
+    if BookBorrow.objects.filter(book=book, student=student, status__in=['active', 'overdue']).exists():
+        messages.error(request, f'You already have this book borrowed.')
+        return redirect('book_detail', pk=book.id)
+    
+    # Check borrowing limit
+    active_borrows = BookBorrow.objects.filter(student=student, status__in=['active', 'overdue']).count()
+    if active_borrows >= student.borrowing_limit:
+        messages.error(request, f'You have reached the maximum borrowing limit of {student.borrowing_limit} books.')
+        return redirect('book_detail', pk=book.id)
+    
+    if request.method == 'POST':
+        form = BookBorrowForm(request.POST)
+        if form.is_valid():
+            borrow = form.save(commit=False)
+            borrow.book = book
+            borrow.student = student
+            borrow.save()
+            
+            # Update book status
+            book.status = 'borrowed'
+            book.save()
+            
+            messages.success(request, f'Successfully borrowed "{book.title}"! Due date: {borrow.due_date}')
+            return redirect('student_library_dashboard')
+    else:
+        form = BookBorrowForm()
+    
+    # Get current borrowings count for template
+    current_borrowings_count = BookBorrow.objects.filter(student=student, status__in=['active', 'overdue']).count()
+    
+    context = {
+        'form': form, 
+        'book': book,
+        'current_borrowings_count': current_borrowings_count,
+        'max_borrowings': student.borrowing_limit
+    }
+    return render(request, 'student/library/borrow_book.html', context)
+
+@login_required
+def return_book(request, borrow_id):
+    """Return a borrowed book"""
+    borrow = get_object_or_404(BookBorrow, id=borrow_id)
+    
+    # Check permissions
+    if not (request.user.is_superuser or 
+            hasattr(request.user, 'teacher_profile') or
+            (hasattr(request.user, 'student_profile') and borrow.student == request.user.student_profile)):
+        messages.error(request, "You don't have permission to return this book.")
+        return redirect('book_detail', pk=borrow.book.id)
+    
+    if borrow.status not in ['active', 'overdue']:
+        messages.error(request, 'This book has already been returned.')
+        return redirect('book_detail', pk=borrow.book.id)
+    
+    if request.method == 'POST':
+        form = BookReturnForm(request.POST, instance=borrow)
+        if form.is_valid():
+            borrow = form.save(commit=False)
+            borrow.return_date = timezone.now()
+            borrow.status = 'returned'
+            
+            # Calculate final fine if overdue
+            if borrow.is_overdue:
+                borrow.fine_amount = borrow.calculate_fine()
+                # Create a Fine record if there's a fine amount
+                if borrow.fine_amount > 0:
+                    Fine.objects.create(
+                        student=borrow.student,
+                        amount=borrow.fine_amount,
+                        description=f'Overdue fine for "{borrow.book.title}" - {borrow.days_overdue} days late'
+                    )
+            
+            borrow.save()
+            
+            # Update book status
+            book = borrow.book
+            book.status = 'available'
+            book.save()
+            
+            # Check for pending reservations and notify
+            pending_reservation = BookReservation.objects.filter(
+                book=book, status='pending'
+            ).order_by('reservation_date').first()
+            
+            if pending_reservation:
+                # TODO: Send notification to student with reservation
+                messages.info(request, f'Book returned successfully. Student {pending_reservation.student.roll_number} has a pending reservation.')
+            else:
+                messages.success(request, f'Book "{book.title}" returned successfully!')
+            
+            return redirect('book_detail', pk=book.id)
+    else:
+        form = BookReturnForm()
+    
+    context = {'form': form, 'borrow': borrow}
+    return render(request, 'student/library/return_book.html', context)
+
+@login_required
+@student_required
+@login_required
+@student_required
+def reserve_book(request, pk):
+    """Reserve a book (Students only)"""
+    book = get_object_or_404(Book, id=pk)
+    student = request.user.student_profile
+    
+    # Check if book can be reserved
+    if book.status == 'available':
+        messages.error(request, f'"{book.title}" is available for immediate borrowing. No need to reserve.')
+        return redirect('book_detail', pk=book.id)
+    
+    # Check if student already has a reservation
+    if BookReservation.objects.filter(book=book, student=student, status='pending').exists():
+        messages.error(request, f'You already have a pending reservation for "{book.title}".')
+        return redirect('book_detail', pk=book.id)
+    
+    # Check if student already has the book
+    if BookBorrow.objects.filter(book=book, student=student, status__in=['active', 'overdue']).exists():
+        messages.error(request, f'You already have this book borrowed.')
+        return redirect('book_detail', pk=book.id)
+    
+    if request.method == 'POST':
+        form = BookReservationForm(request.POST)
+        if form.is_valid():
+            reservation = form.save(commit=False)
+            reservation.book = book
+            reservation.student = student
+            
+            # Set expiry date (7 days from now)
+            from datetime import timedelta
+            reservation.expiry_date = timezone.now() + timedelta(days=7)
+            reservation.save()
+            
+            messages.success(request, f'Reservation placed for "{book.title}". You will be notified when it becomes available.')
+            return redirect('student_library_dashboard')
+    else:
+        form = BookReservationForm()
+    
+    context = {'form': form, 'book': book}
+    return render(request, 'student/library/reserve_book.html', context)
+
+@login_required
+@student_required
+def cancel_reservation(request, reservation_id):
+    """Cancel a book reservation"""
+    reservation = get_object_or_404(BookReservation, id=reservation_id)
+    
+    # Check permissions
+    if reservation.student != request.user.student_profile:
+        messages.error(request, "You don't have permission to cancel this reservation.")
+        return redirect('book_detail', pk=reservation.book.id)
+    
+    if reservation.status != 'pending':
+        messages.error(request, 'This reservation cannot be cancelled.')
+        return redirect('book_detail', pk=reservation.book.id)
+    
+    book_title = reservation.book.title
+    reservation.status = 'cancelled'
+    reservation.save()
+    
+    messages.success(request, f'Reservation for "{book_title}" cancelled successfully.')
+    return redirect('student_library_dashboard')
+
+@login_required
+@student_required
+@login_required
+@student_required
+def student_library_dashboard(request):
+    """Student's personal library dashboard"""
+    student = request.user.student_profile
+    
+    # Current borrowings
+    current_borrows = BookBorrow.objects.filter(
+        student=student,
+        status__in=['active', 'overdue']
+    ).select_related('book').order_by('due_date')
+    
+    # Current reservations
+    current_reservations = BookReservation.objects.filter(
+        student=student,
+        status='pending'
+    ).select_related('book').order_by('reservation_date')
+    
+    # Borrowing history (all borrows including active ones)
+    borrow_history = BookBorrow.objects.filter(
+        student=student
+    ).select_related('book').order_by('-borrow_date')[:10]
+    
+    # Overdue books
+    overdue_books = current_borrows.filter(status='overdue')
+    
+    # Calculate total fines
+    total_fines = Fine.objects.filter(
+        student=student,
+        is_paid=False,
+        description__icontains='Overdue fine'
+    ).aggregate(total=models.Sum('amount'))['total'] or 0
+    
+    context = {
+        'student': student,
+        'current_borrowings': current_borrows,  # Fixed: template expects current_borrowings
+        'current_reservations': current_reservations,
+        'borrowing_history': borrow_history,  # Fixed variable name to match template
+        'overdue_books': overdue_books,
+        'total_fines': total_fines,
+    }
+    return render(request, 'student/library/student_dashboard.html', context)
+
+@csrf_exempt
+@login_required
+def book_nfc_checkout_api(request):
+    """API endpoint for NFC-based book checkout"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'})
+    
+    try:
+        data = json.loads(request.body)
+        student_card_id = data.get('student_card_id')
+        book_nfc_uid = data.get('book_nfc_uid')
+        action = data.get('action', 'checkout')  # 'checkout' or 'return'
+        
+        if not student_card_id or not book_nfc_uid:
+            return JsonResponse({'success': False, 'error': 'Missing student_card_id or book_nfc_uid'})
+        
+        # Find student by NFC UID
+        try:
+            student = Student.objects.get(nfc_uid=student_card_id)
+        except Student.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Student not found. Please register this NFC card first.'
+            })
+        
+        # Find book by NFC tag UID
+        try:
+            book = Book.objects.get(nfc_tag_uid=book_nfc_uid)
+        except Book.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Book not found. Please check the NFC tag.'
+            })
+        
+        if action == 'checkout':
+            # Check if book is available
+            if book.status != 'available':
+                return JsonResponse({
+                    'success': False,
+                    'error': f'"{book.title}" is not available for borrowing.'
+                })
+            
+            # Check borrowing limit
+            active_borrows = BookBorrow.objects.filter(student=student, status__in=['active', 'overdue']).count()
+            if active_borrows >= 5:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Borrowing limit exceeded (maximum 5 books).'
+                })
+            
+            # Create borrowing record
+            from datetime import date, timedelta
+            borrow = BookBorrow.objects.create(
+                book=book,
+                student=student,
+                due_date=date.today() + timedelta(days=14),
+                nfc_checkout=True,
+                checkout_notes='Checked out via NFC'
+            )
+            
+            # Update book status
+            book.status = 'borrowed'
+            book.save()
+            
+            return JsonResponse({
+                'success': True,
+                'action': 'checkout',
+                'message': f'Successfully checked out "{book.title}"',
+                'book_title': book.title,
+                'student_name': student.name,
+                'due_date': borrow.due_date.strftime('%Y-%m-%d'),
+                'borrow_id': borrow.id
+            })
+        
+        elif action == 'return':
+            # Find active borrowing
+            try:
+                borrow = BookBorrow.objects.get(
+                    book=book,
+                    student=student,
+                    status__in=['active', 'overdue']
+                )
+            except BookBorrow.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'No active borrowing found for "{book.title}".'
+                })
+            
+            # Process return
+            borrow.return_date = timezone.now()
+            borrow.status = 'returned'
+            borrow.nfc_checkin = True
+            
+            # Calculate fine if overdue
+            fine_amount = 0
+            if borrow.is_overdue:
+                fine_amount = borrow.calculate_fine()
+                borrow.fine_amount = fine_amount
+                
+                # Create Fine record
+                if fine_amount > 0:
+                    Fine.objects.create(
+                        student=student,
+                        amount=fine_amount,
+                        description=f'Overdue fine for "{book.title}" - {borrow.days_overdue} days late'
+                    )
+            
+            borrow.save()
+            
+            # Update book status
+            book.status = 'available'
+            book.save()
+            
+            return JsonResponse({
+                'success': True,
+                'action': 'return',
+                'message': f'Successfully returned "{book.title}"',
+                'book_title': book.title,
+                'student_name': student.name,
+                'fine_amount': float(fine_amount),
+                'was_overdue': borrow.is_overdue,
+                'days_overdue': borrow.days_overdue if borrow.is_overdue else 0
+            })
+        
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid action. Use "checkout" or "return".'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'})
+
+@login_required
+def overdue_books_report(request):
+    """Generate report of overdue books"""
+    # Check permissions (teachers and admin only)
+    if not (request.user.is_superuser or hasattr(request.user, 'teacher_profile')):
+        messages.error(request, "Access denied. Teacher or admin privileges required.")
+        return redirect('library_dashboard')
+    
+    overdue_borrows = BookBorrow.objects.filter(
+        status='overdue'
+    ).select_related('book', 'student__user').order_by('due_date')
+    
+    # Calculate total fine amounts
+    total_fine_amount = sum(borrow.calculate_fine() for borrow in overdue_borrows)
+    
+    context = {
+        'overdue_borrows': overdue_borrows,
+        'total_fine_amount': total_fine_amount,
+    }
+    return render(request, 'student/library/overdue_report.html', context)

@@ -1,0 +1,562 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Library - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-book-reader text-primary me-2"></i>My Library
+                    </h2>
+                    <p class="text-muted mb-0">Manage your borrowed books and library activities</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'book_list' %}" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Browse Books
+                    </a>
+                    <a href="{% url 'library_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-2"></i>Library Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Info Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-gradient">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            {% if user.student.photo %}
+                                <img src="{{ user.student.photo.url }}" 
+                                     alt="{{ user.student.name }}"
+                                     class="rounded-circle border border-white border-3" 
+                                     style="width: 80px; height: 80px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-white rounded-circle d-flex align-items-center justify-content-center border border-3"
+                                     style="width: 80px; height: 80px;">
+                                    <i class="fas fa-user text-primary fa-2x"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h4 class="text-white mb-1">{{ user.student.name }}</h4>
+                            <p class="text-white-50 mb-2">{{ user.student.roll_number }} • {{ user.student.department }}</p>
+                            <p class="text-white-50 small mb-0">{{ user.student.email }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="text-white">
+                                        <h3 class="mb-0">{{ borrowed_count }}</h3>
+                                        <small>Borrowed</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-white">
+                                        <h3 class="mb-0">{{ overdue_count }}</h3>
+                                        <small>Overdue</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-white">
+                                        <h3 class="mb-0">{{ total_fines|floatformat:2 }}</h3>
+                                        <small>Fines ($)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Current Borrowings -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-book text-primary me-2"></i>Currently Borrowed Books
+                    </h5>
+                    <span class="badge bg-primary">{{ borrowed_count }} books</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if current_borrowings %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Book</th>
+                                        <th>Borrowed Date</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for borrowing in current_borrowings %}
+                                    <tr class="{% if borrowing.is_overdue %}table-danger{% elif borrowing.due_soon %}table-warning{% endif %}">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="book-mini-icon bg-primary text-white rounded me-3 d-flex align-items-center justify-content-center"
+                                                     style="width: 40px; height: 50px;">
+                                                    <i class="fas fa-book"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">{{ borrowing.book.title|truncatechars:40 }}</h6>
+                                                    <p class="text-muted small mb-0">{{ borrowing.book.author }}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ borrowing.borrow_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            <span class="{% if borrowing.is_overdue %}text-danger fw-bold{% elif borrowing.due_soon %}text-warning fw-bold{% endif %}">
+                                                {{ borrowing.due_date|date:"M d, Y" }}
+                                            </span>
+                                            {% if borrowing.is_overdue %}
+                                                <br><small class="text-danger">{{ borrowing.days_overdue }} days overdue</small>
+                                            {% elif borrowing.due_soon %}
+                                                <br><small class="text-warning">Due soon</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if borrowing.is_overdue %}
+                                                <span class="badge bg-danger">Overdue</span>
+                                            {% elif borrowing.due_soon %}
+                                                <span class="badge bg-warning">Due Soon</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'book_detail' borrowing.book.pk %}" 
+                                                   class="btn btn-outline-primary" 
+                                                   title="View Book Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'return_book' borrowing.pk %}" 
+                                                   class="btn btn-outline-danger" 
+                                                   title="Return Book"
+                                                   onclick="return confirm('Are you sure you want to return this book?')">
+                                                    <i class="fas fa-undo"></i>
+                                                </a>
+                                                <button type="button" 
+                                                        class="btn btn-success" 
+                                                        onclick="renewBook({{ borrowing.pk }})"
+                                                        title="Renew Book">
+                                                    <i class="fas fa-redo"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-book-open fa-3x mb-3"></i>
+                            <h5>No Books Currently Borrowed</h5>
+                            <p>Browse the library catalog to borrow your first book!</p>
+                            <a href="{% url 'book_list' %}" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Browse Books
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-lightning-bolt text-warning me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'book_list' %}" class="btn btn-primary">
+                            <i class="fas fa-search me-2"></i>Browse Books
+                        </a>
+                        {% if reservations %}
+                        <a href="#reservationsSection" class="btn btn-outline-info">
+                            <i class="fas fa-bookmark me-2"></i>My Reservations ({{ reservations|length }})
+                        </a>
+                        {% endif %}
+                        <button type="button" class="btn btn-outline-success" onclick="showNFCReturn()">
+                            <i class="fas fa-wifi me-2"></i>NFC Return
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue Alerts -->
+            {% if overdue_borrowings %}
+            <div class="card border-danger shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Overdue Books
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for borrowing in overdue_borrowings %}
+                    <div class="d-flex justify-content-between align-items-start mb-3 {% if not forloop.last %}border-bottom pb-3{% endif %}">
+                        <div>
+                            <h6 class="mb-1">{{ borrowing.book.title|truncatechars:25 }}</h6>
+                            <small class="text-muted">Due: {{ borrowing.due_date|date:"M d, Y" }}</small>
+                            <br><small class="text-danger">{{ borrowing.days_overdue }} days overdue</small>
+                        </div>
+                        <span class="badge bg-danger">${{ borrowing.fine_amount|floatformat:2 }}</span>
+                    </div>
+                    {% endfor %}
+                    <div class="text-center mt-3">
+                        <strong class="text-danger">Total Fine: ${{ total_fines|floatformat:2 }}</strong>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Due Soon -->
+            {% if due_soon_borrowings %}
+            <div class="card border-warning shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Due Soon
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for borrowing in due_soon_borrowings %}
+                    <div class="d-flex justify-content-between align-items-start mb-2 {% if not forloop.last %}border-bottom pb-2{% endif %}">
+                        <div>
+                            <h6 class="mb-1">{{ borrowing.book.title|truncatechars:25 }}</h6>
+                            <small class="text-warning">Due: {{ borrowing.due_date|date:"M d, Y" }}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-warning" onclick="renewBook({{ borrowing.pk }})">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Reservations Section -->
+    {% if reservations %}
+    <div class="row mt-4" id="reservationsSection">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bookmark text-info me-2"></i>My Reservations
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Book</th>
+                                    <th>Reserved Date</th>
+                                    <th>Expires</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reservation in reservations %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <h6 class="mb-1">{{ reservation.book.title|truncatechars:40 }}</h6>
+                                            <p class="text-muted small mb-0">{{ reservation.book.author }}</p>
+                                        </div>
+                                    </td>
+                                    <td>{{ reservation.reservation_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <span class="{% if reservation.is_expired %}text-danger{% elif reservation.expires_soon %}text-warning{% endif %}">
+                                            {{ reservation.expiry_date|date:"M d, Y" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if reservation.is_expired %}danger{% elif reservation.book.is_available %}success{% else %}secondary{% endif %}">
+                                            {% if reservation.is_expired %}
+                                                Expired
+                                            {% elif reservation.book.is_available %}
+                                                Ready
+                                            {% else %}
+                                                Waiting
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            {% if reservation.book.is_available and not reservation.is_expired %}
+                                                <a href="{% url 'borrow_book' reservation.book.pk %}" class="btn btn-success">
+                                                    <i class="fas fa-hand-holding"></i> Borrow
+                                                </a>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-outline-danger" onclick="cancelReservation({{ reservation.pk }})">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Borrowing History -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history text-secondary me-2"></i>Borrowing History
+                    </h5>
+                    <small class="text-muted">Last 10 records</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if borrowing_history %}
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Book</th>
+                                        <th>Borrowed</th>
+                                        <th>Returned</th>
+                                        <th>Status</th>
+                                        <th>Fine</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for borrow in borrowing_history %}
+                                    <tr>
+                                        <td>
+                                            <div>
+                                                <div class="fw-semibold">{{ borrow.book.title|truncatechars:30 }}</div>
+                                                <small class="text-muted">{{ borrow.book.author }}</small>
+                                            </div>
+                                        </td>
+                                        <td>{{ borrow.borrow_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if borrow.return_date %}
+                                                {{ borrow.return_date|date:"M d, Y" }}
+                                            {% else %}
+                                                <span class="text-muted">Not returned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if borrow.status == 'returned' %}success{% elif borrow.status == 'overdue' %}danger{% else %}primary{% endif %}">
+                                                {{ borrow.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if borrow.fine_amount > 0 %}
+                                                <span class="text-danger">${{ borrow.fine_amount|floatformat:2 }}</span>
+                                            {% else %}
+                                                <span class="text-muted">None</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-history fa-2x mb-2"></i>
+                            <p class="mb-0">No borrowing history found</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NFC Return Modal -->
+<div class="modal fade" id="nfcReturnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">NFC Book Return</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="nfc-animation mb-3">
+                    <i class="fas fa-wifi fa-4x text-primary"></i>
+                </div>
+                <h6>Scan book's NFC tag</h6>
+                <p class="text-muted">Place the book near the NFC reader to return it automatically.</p>
+                <div id="nfcReturnStatus" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Renew book function
+function renewBook(borrowingId) {
+    if (confirm('Are you sure you want to renew this book?')) {
+        fetch(`/library/renew-book/${borrowingId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Book renewed successfully!', 'success');
+                location.reload();
+            } else {
+                showAlert(data.error || 'Failed to renew book', 'error');
+            }
+        })
+        .catch(error => {
+            showAlert('An error occurred while renewing the book', 'error');
+        });
+    }
+}
+
+// Cancel reservation function
+function cancelReservation(reservationId) {
+    if (confirm('Are you sure you want to cancel this reservation?')) {
+        fetch(`/library/cancel-reservation/${reservationId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Reservation cancelled successfully!', 'success');
+                location.reload();
+            } else {
+                showAlert(data.error || 'Failed to cancel reservation', 'error');
+            }
+        });
+    }
+}
+
+// NFC Return functionality
+function showNFCReturn() {
+    new bootstrap.Modal(document.getElementById('nfcReturnModal')).show();
+    startNFCReturn();
+}
+
+function startNFCReturn() {
+    const statusDiv = document.getElementById('nfcReturnStatus');
+    statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Waiting for NFC tag...';
+    
+    fetch('/api/library/nfc-return/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = '<div class="text-success"><i class="fas fa-check-circle me-2"></i>Book returned successfully!</div>';
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('nfcReturnModal')).hide();
+                location.reload();
+            }, 2000);
+        } else {
+            statusDiv.innerHTML = '<div class="text-danger"><i class="fas fa-times-circle me-2"></i>' + (data.error || 'Return failed') + '</div>';
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = '<div class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>NFC reader not available</div>';
+    });
+}
+
+function showAlert(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas fa-${icon} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    setTimeout(() => {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+            bootstrap.Alert.getOrCreateInstance(alert).close();
+        }
+    }, 5000);
+}
+
+// NFC Animation
+setInterval(() => {
+    const nfcIcon = document.querySelector('.nfc-animation i');
+    if (nfcIcon) {
+        nfcIcon.classList.toggle('fa-pulse');
+    }
+}, 1000);
+</script>
+
+<style>
+.bg-gradient {
+    background: linear-gradient(135deg, var(--bs-primary) 0%, #6f42c1 100%);
+}
+
+.book-mini-icon {
+    flex-shrink: 0;
+}
+
+.nfc-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.table-responsive {
+    border-radius: 0.375rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

@@ -141,6 +141,12 @@
                 <a href="{% url 'view_logs' %}" class="nav-link {% if request.resolver_match.url_name == 'view_logs' %}active{% endif %}">
                     <i class="fas fa-history"></i> Entry Logs
                 </a>
+                <a href="{% url 'event_list' %}" class="nav-link {% if 'event' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> Events
+                </a>
+                <a href="{% url 'library_dashboard' %}" class="nav-link {% if 'library' in request.resolver_match.url_name or 'book' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-books"></i> Library
+                </a>
             {% else %}
                 <!-- Student Navigation -->
                 <a href="{% url 'student_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
@@ -148,6 +154,12 @@
                 </a>
                 <a href="{% url 'change_password_manual' %}" class="nav-link {% if request.resolver_match.url_name == 'change_password_manual' %}active{% endif %}">
                     <i class="fas fa-key"></i> Change Password
+                </a>
+                <a href="{% url 'event_list' %}" class="nav-link {% if 'event' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> Events
+                </a>
+                <a href="{% url 'student_library_dashboard' %}" class="nav-link {% if 'library' in request.resolver_match.url_name or 'book' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-book-reader"></i> My Library
                 </a>
             {% endif %}
             

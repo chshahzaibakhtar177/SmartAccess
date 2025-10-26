@@ -1,0 +1,497 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if book %}Edit Book{% else %}Add New Book{% endif %} - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'library_dashboard' %}">Library</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'book_list' %}">Books</a></li>
+            <li class="breadcrumb-item active">
+                {% if book %}Edit "{{ book.title|truncatechars:30 }}"{% else %}Add New Book{% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-{% if book %}edit{% else %}plus{% endif %} text-primary me-2"></i>
+                        {% if book %}Edit Book Information{% else %}Add New Book{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="bookForm">
+                        {% csrf_token %}
+                        
+                        <!-- Error Display -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Basic Information -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">Basic Information</h6>
+                                
+                                <!-- Title -->
+                                <div class="mb-3">
+                                    <label for="{{ form.title.id_for_label }}" class="form-label">
+                                        Book Title <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.title }}
+                                    {% if form.title.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Enter the complete title of the book</div>
+                                </div>
+
+                                <!-- Author -->
+                                <div class="mb-3">
+                                    <label for="{{ form.author.id_for_label }}" class="form-label">
+                                        Author <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.author }}
+                                    {% if form.author.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.author.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Author's full name</div>
+                                </div>
+
+                                <!-- Category -->
+                                <div class="mb-3">
+                                    <label for="{{ form.category.id_for_label }}" class="form-label">
+                                        Category <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.category }}
+                                    {% if form.category.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Select the appropriate book category</div>
+                                </div>
+
+                                <!-- ISBN -->
+                                <div class="mb-3">
+                                    <label for="{{ form.isbn.id_for_label }}" class="form-label">
+                                        ISBN <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                                        {{ form.isbn }}
+                                        <button type="button" class="btn btn-outline-secondary" onclick="validateISBN()">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </div>
+                                    {% if form.isbn.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.isbn.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">13-digit ISBN number</div>
+                                </div>
+                            </div>
+
+                            <!-- Publication Information -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">Publication Information</h6>
+                                
+                                <!-- Publisher -->
+                                <div class="mb-3">
+                                    <label for="{{ form.publisher.id_for_label }}" class="form-label">
+                                        Publisher <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.publisher }}
+                                    {% if form.publisher.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.publisher.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Publication Year -->
+                                <div class="mb-3">
+                                    <label for="{{ form.publication_year.id_for_label }}" class="form-label">
+                                        Publication Year <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.publication_year }}
+                                    {% if form.publication_year.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.publication_year.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Edition -->
+                                <div class="mb-3">
+                                    <label for="{{ form.edition.id_for_label }}" class="form-label">Edition</label>
+                                    {{ form.edition }}
+                                    {% if form.edition.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.edition.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">e.g., 1st Edition, 2nd Edition (optional)</div>
+                                </div>
+
+                                <!-- Pages -->
+                                <div class="mb-3">
+                                    <label for="{{ form.pages.id_for_label }}" class="form-label">Number of Pages</label>
+                                    {{ form.pages }}
+                                    {% if form.pages.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.pages.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+        <!-- Price and Status -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.price.id_for_label }}" class="form-label">Price</label>
+                    {{ form.price }}
+                    {% if form.price.errors %}
+                        <div class="invalid-feedback d-block">{{ form.price.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">Book price (optional)</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
+                    {{ form.status }}
+                    {% if form.status.errors %}
+                        <div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">Current availability status</div>
+                </div>
+            </div>
+        </div>                        <div class="row">
+                            <!-- Physical Information -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">Physical Information</h6>
+                                
+                                <!-- Location -->
+                                <div class="mb-3">
+                                    <label for="{{ form.location.id_for_label }}" class="form-label">
+                                        Shelf Location
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                        {{ form.location }}
+                                    </div>
+                                    {% if form.location.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.location.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">e.g., Section A, Shelf 3, Row 2</div>
+                                </div>
+                                
+                                <!-- Copy Number -->
+                                <div class="mb-3">
+                                    <label for="{{ form.copy_number.id_for_label }}" class="form-label">
+                                        Copy Number
+                                    </label>
+                                    {{ form.copy_number }}
+                                    {% if form.copy_number.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.copy_number.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Copy number if multiple copies exist</div>
+                                </div>
+                            </div>
+
+                            <!-- NFC Information -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-3">NFC Configuration</h6>
+                                
+                                <!-- NFC Tag UID -->
+                                <div class="mb-3">
+                                    <label for="{{ form.nfc_tag_uid.id_for_label }}" class="form-label">
+                                        NFC Tag UID
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-wifi"></i></span>
+                                        {{ form.nfc_tag_uid }}
+                                        <button type="button" class="btn btn-outline-primary" onclick="scanNFC()">
+                                            <i class="fas fa-search me-1"></i>Scan
+                                        </button>
+                                    </div>
+                                    {% if form.nfc_tag_uid.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.nfc_tag_uid.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Optional: NFC tag for quick checkout</div>
+                                </div>
+                                
+                                <!-- Cover Image -->
+                                <div class="mb-3">
+                                    <label for="{{ form.cover_image.id_for_label }}" class="form-label">
+                                        Book Cover Image
+                                    </label>
+                                    {{ form.cover_image }}
+                                    {% if form.cover_image.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.cover_image.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Upload book cover image (optional)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between pt-3 border-top">
+                            <div>
+                                <a href="{% url 'book_list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Back to Books
+                                </a>
+                            </div>
+                            <div>
+                                {% if book %}
+                                    <button type="button" class="btn btn-outline-danger me-2" onclick="confirmDelete()">
+                                        <i class="fas fa-trash me-2"></i>Delete Book
+                                    </button>
+                                {% endif %}
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="fas fa-save me-2"></i>
+                                    {% if book %}Update Book{% else %}Add Book{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h6>Processing...</h6>
+                <p class="text-muted mb-0">Please wait while we save your book information.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if book %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    You are about to delete this book permanently.
+                </div>
+                <p>Book: <strong>{{ book.title }}</strong></p>
+                <p>Author: <strong>{{ book.author }}</strong></p>
+                <p class="text-danger small mb-0">This action cannot be undone!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{% url 'delete_book' book.pk %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Delete Book
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- NFC Scan Modal -->
+<div class="modal fade" id="nfcModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">NFC Tag Scanner</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="nfc-scanner-animation mb-3">
+                    <i class="fas fa-wifi fa-3x text-primary"></i>
+                </div>
+                <h6>Place NFC tag near the reader</h6>
+                <p class="text-muted">Make sure the Raspberry Pi NFC reader is connected and active.</p>
+                <div id="nfcStatus" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="startNFCScan()">Start Scan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+document.getElementById('bookForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+    
+    // Show loading modal for longer operations
+    setTimeout(() => {
+        if (submitBtn.disabled) {
+            new bootstrap.Modal(document.getElementById('loadingModal')).show();
+        }
+    }, 1000);
+});
+
+// ISBN validation
+function validateISBN() {
+    const isbnField = document.getElementById('{{ form.isbn.id_for_label }}');
+    const isbn = isbnField.value.replace(/[-\s]/g, '');
+    
+    if (isbn.length === 13) {
+        // Simple ISBN-13 validation
+        let sum = 0;
+        for (let i = 0; i < 12; i++) {
+            sum += parseInt(isbn[i]) * (i % 2 === 0 ? 1 : 3);
+        }
+        const checkDigit = (10 - (sum % 10)) % 10;
+        
+        if (checkDigit === parseInt(isbn[12])) {
+            isbnField.classList.remove('is-invalid');
+            isbnField.classList.add('is-valid');
+            showAlert('ISBN is valid', 'success');
+        } else {
+            isbnField.classList.remove('is-valid');
+            isbnField.classList.add('is-invalid');
+            showAlert('Invalid ISBN checksum', 'error');
+        }
+    } else {
+        showAlert('ISBN must be 13 digits', 'error');
+    }
+}
+
+// NFC scanning functionality
+function scanNFC() {
+    new bootstrap.Modal(document.getElementById('nfcModal')).show();
+}
+
+function startNFCScan() {
+    const statusDiv = document.getElementById('nfcStatus');
+    statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Scanning for NFC tags...';
+    
+    // Simulate NFC scanning (replace with actual API call)
+    fetch('/api/nfc/scan/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.nfc_uid) {
+            document.getElementById('{{ form.nfc_tag_uid.id_for_label }}').value = data.nfc_uid;
+            statusDiv.innerHTML = '<div class="text-success"><i class="fas fa-check-circle me-2"></i>NFC tag detected: ' + data.nfc_uid + '</div>';
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('nfcModal')).hide();
+            }, 2000);
+        } else {
+            statusDiv.innerHTML = '<div class="text-danger"><i class="fas fa-times-circle me-2"></i>No NFC tag detected. Please try again.</div>';
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = '<div class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Scanner not available</div>';
+    });
+}
+
+function confirmDelete() {
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+function showAlert(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle' : 'exclamation-triangle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas fa-${icon} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    const container = document.querySelector('.card-body');
+    container.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) {
+            bootstrap.Alert.getOrCreateInstance(alert).close();
+        }
+    }, 3000);
+}
+
+// Auto-format ISBN input
+document.getElementById('{{ form.isbn.id_for_label }}').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 13) value = value.slice(0, 13);
+    e.target.value = value;
+});
+
+// NFC animation
+document.addEventListener('DOMContentLoaded', function() {
+    const nfcIcon = document.querySelector('.nfc-scanner-animation i');
+    if (nfcIcon) {
+        setInterval(() => {
+            nfcIcon.classList.toggle('fa-pulse');
+        }, 1000);
+    }
+});
+</script>
+
+<style>
+.form-control, .form-select {
+    border-radius: 0.375rem;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.is-valid {
+    border-color: #198754;
+}
+
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.nfc-scanner-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.required-field {
+    position: relative;
+}
+
+.required-field::after {
+    content: '*';
+    color: #dc3545;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+</style>
+{% endblock %}

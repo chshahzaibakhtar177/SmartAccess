@@ -51,6 +51,30 @@ urlpatterns = [
     path('assign-card-request/<int:student_id>/', assign_card_request, name='assign_card_request'),
     path('remove-card/<int:student_id>/', remove_card, name='remove_card'),
     
+    # Event Management URLs
+    path('events/', event_list, name='event_list'),
+    path('events/<int:event_id>/', event_detail, name='event_detail'),
+    path('events/create/', create_event, name='create_event'),
+    path('events/<int:event_id>/edit/', edit_event, name='edit_event'),
+    path('events/<int:event_id>/register/', register_for_event, name='register_for_event'),
+    path('events/<int:event_id>/cancel-registration/', cancel_event_registration, name='cancel_event_registration'),
+    path('api/event-nfc-checkin/', event_nfc_checkin_api, name='event_nfc_checkin_api'),
+    
+    # Library Management URLs
+    path('library/', library_dashboard, name='library_dashboard'),
+    path('library/books/', book_list, name='book_list'),
+    path('library/books/<int:pk>/', book_detail, name='book_detail'),
+    path('library/books/add/', add_book, name='add_book'),
+    path('library/books/<int:pk>/edit/', edit_book, name='edit_book'),
+    path('library/books/<int:pk>/delete/', delete_book, name='delete_book'),
+    path('library/books/<int:pk>/borrow/', borrow_book, name='borrow_book'),
+    path('library/borrows/<int:borrow_id>/return/', return_book, name='return_book'),
+    path('library/books/<int:pk>/reserve/', reserve_book, name='reserve_book'),
+    path('library/reservations/<int:reservation_id>/cancel/', cancel_reservation, name='cancel_reservation'),
+    path('library/student/', student_library_dashboard, name='student_library_dashboard'),
+    path('library/overdue-report/', overdue_books_report, name='overdue_books_report'),
+    path('api/library/nfc-checkout/', book_nfc_checkout_api, name='book_nfc_checkout_api'),
+    
     path('student/dashboard/', student_dashboard, name='student_dashboard'),
     path('teacher/dashboard/', teacher_dashboard, name='teacher_dashboard'),
     path('admin/dashboard/', admin_dashboard, name='admin_dashboard'),

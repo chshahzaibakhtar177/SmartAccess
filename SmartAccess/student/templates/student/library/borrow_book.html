@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Borrow Book - {{ book.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'library_dashboard' %}">Library</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'book_list' %}">Books</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'book_detail' book.pk %}">{{ book.title|truncatechars:30 }}</a></li>
+            <li class="breadcrumb-item active">Borrow</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary bg-gradient text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-hand-holding me-2"></i>Borrow Book
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Book Information Display -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="book-cover bg-light border rounded d-flex align-items-center justify-content-center"
+                                 style="height: 180px;">
+                                <i class="fas fa-book fa-3x text-muted"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <h5 class="mb-2">{{ book.title }}</h5>
+                            <p class="text-muted mb-1">by {{ book.author }}</p>
+                            <p class="mb-2">
+                                <span class="badge bg-primary">{{ book.category.name }}</span>
+                                <span class="badge bg-success ms-1">Available</span>
+                            </p>
+                            
+                            <div class="row text-sm">
+                                <div class="col-sm-6">
+                                    <strong>ISBN:</strong> {{ book.isbn }}<br>
+                                    <strong>Publisher:</strong> {{ book.publisher }}
+                                </div>
+                                <div class="col-sm-6">
+                                    <strong>Year:</strong> {{ book.publication_year }}<br>
+                                    <strong>Pages:</strong> {{ book.pages|default:"N/A" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Borrowing Form -->
+                    <form method="POST" id="borrowForm">
+                        {% csrf_token %}
+                        
+                        <!-- Error Display -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Student Information -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Borrower Information</h6>
+                            
+                            {% if user.is_staff %}
+                                <!-- Student Selection for Staff -->
+                                <div class="mb-3">
+                                    <label for="{{ form.student.id_for_label }}" class="form-label">
+                                        Select Student <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.student }}
+                                    {% if form.student.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.student.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Search and select the student who is borrowing this book</div>
+                                </div>
+                            {% else %}
+                                <!-- Current User Information -->
+                                <div class="alert alert-info">
+                                    <div class="d-flex align-items-center">
+                                        {% if user.student.photo %}
+                                            <img src="{{ user.student.photo.url }}" 
+                                                 alt="{{ user.student.name }}"
+                                                 class="rounded-circle me-3" 
+                                                 style="width: 50px; height: 50px; object-fit: cover;">
+                                        {% else %}
+                                            <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-3"
+                                                 style="width: 50px; height: 50px;">
+                                                <i class="fas fa-user text-white fa-lg"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="mb-1">{{ user.student.name }}</h6>
+                                            <p class="mb-0 text-muted">{{ user.student.roll_number }} • {{ user.student.department }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Borrowing Details -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Borrowing Details</h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.borrow_date.id_for_label }}" class="form-label">
+                                            Borrow Date <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.borrow_date }}
+                                        {% if form.borrow_date.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.borrow_date.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.due_date.id_for_label }}" class="form-label">
+                                            Due Date <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.due_date }}
+                                        {% if form.due_date.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.due_date.errors.0 }}</div>
+                                        {% endif %}
+                                        <div class="form-text">Standard borrowing period: 14 days</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                Notes <small class="text-muted">(Optional)</small>
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">Any special instructions or notes for this borrowing</div>
+                        </div>
+
+                        <!-- Terms and Conditions -->
+                        <div class="mb-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-info-circle text-info me-2"></i>Borrowing Terms & Conditions
+                                    </h6>
+                                    <ul class="list-unstyled mb-0 small">
+                                        <li><i class="fas fa-check text-success me-2"></i>Books must be returned by the due date</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Late returns incur a fine of $1 per day</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Books should be returned in good condition</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Lost or damaged books must be replaced or paid for</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Maximum borrowing period is 30 days</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Agreement Checkbox -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                <label class="form-check-label" for="agreeTerms">
+                                    I agree to the terms and conditions of borrowing this book <span class="text-danger">*</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Current Borrowing Status -->
+                        {% if current_borrowings_count > 0 %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Current Status:</strong> You have {{ current_borrowings_count }} book(s) currently borrowed.
+                            {% if current_borrowings_count >= max_borrowings %}
+                                <br><span class="text-danger">You have reached the maximum borrowing limit ({{ max_borrowings }} books).</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between pt-3 border-top">
+                            <div>
+                                <a href="{% url 'book_detail' book.pk %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Back to Book Details
+                                </a>
+                            </div>
+                            <div>
+                                {% if current_borrowings_count < max_borrowings %}
+                                    <button type="submit" class="btn btn-success btn-lg" id="borrowBtn">
+                                        <i class="fas fa-hand-holding me-2"></i>Confirm Borrowing
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-success btn-lg" disabled>
+                                        <i class="fas fa-ban me-2"></i>Borrowing Limit Reached
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- NFC Quick Checkout -->
+            {% if book.nfc_tag_uid %}
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-wifi text-primary me-2"></i>Quick NFC Checkout Available
+                    </h6>
+                    <p class="text-muted mb-3">This book supports NFC quick checkout. You can also use the NFC reader for instant borrowing.</p>
+                    <button type="button" class="btn btn-outline-primary" onclick="initiateNFCCheckout()">
+                        <i class="fas fa-wifi me-2"></i>Use NFC Checkout
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="text-success mb-3">
+                    <i class="fas fa-check-circle fa-4x"></i>
+                </div>
+                <h4 class="text-success">Book Borrowed Successfully!</h4>
+                <p class="text-muted mb-4">The book has been added to your borrowing record.</p>
+                <div class="d-grid gap-2 d-md-block">
+                    <a href="{% url 'student_library_dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-book-reader me-2"></i>My Library
+                    </a>
+                    <a href="{% url 'book_list' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-books me-2"></i>Browse More Books
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NFC Checkout Modal -->
+<div class="modal fade" id="nfcModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">NFC Quick Checkout</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="nfc-animation mb-3">
+                    <i class="fas fa-wifi fa-4x text-primary"></i>
+                </div>
+                <h6>Scan your student card</h6>
+                <p class="text-muted">Place your NFC-enabled student card near the reader to complete the checkout process.</p>
+                <div id="nfcStatus" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-calculate due date
+    const borrowDateInput = document.getElementById('{{ form.borrow_date.id_for_label }}');
+    const dueDateInput = document.getElementById('{{ form.due_date.id_for_label }}');
+    
+    if (borrowDateInput && dueDateInput) {
+        borrowDateInput.addEventListener('change', function() {
+            const borrowDate = new Date(this.value);
+            const dueDate = new Date(borrowDate);
+            dueDate.setDate(dueDate.getDate() + 14); // Add 14 days
+            dueDateInput.value = dueDate.toISOString().split('T')[0];
+        });
+    }
+    
+    // Set today as default borrow date
+    if (borrowDateInput && !borrowDateInput.value) {
+        const today = new Date();
+        borrowDateInput.value = today.toISOString().split('T')[0];
+        borrowDateInput.dispatchEvent(new Event('change'));
+    }
+});
+
+// Form submission
+document.getElementById('borrowForm').addEventListener('submit', function(e) {
+    const borrowBtn = document.getElementById('borrowBtn');
+    const agreeCheckbox = document.getElementById('agreeTerms');
+    
+    if (!agreeCheckbox.checked) {
+        e.preventDefault();
+        showAlert('Please agree to the terms and conditions to proceed.', 'warning');
+        return;
+    }
+    
+    borrowBtn.disabled = true;
+    borrowBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+});
+
+// NFC Checkout
+function initiateNFCCheckout() {
+    new bootstrap.Modal(document.getElementById('nfcModal')).show();
+    startNFCCheckout();
+}
+
+function startNFCCheckout() {
+    const statusDiv = document.getElementById('nfcStatus');
+    statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Waiting for student card...';
+    
+    fetch('/api/library/nfc-checkout/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({
+            'book_id': {{ book.pk }},
+            'action': 'borrow'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = '<div class="text-success"><i class="fas fa-check-circle me-2"></i>Checkout completed successfully!</div>';
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('nfcModal')).hide();
+                showSuccessModal();
+            }, 1500);
+        } else {
+            statusDiv.innerHTML = '<div class="text-danger"><i class="fas fa-times-circle me-2"></i>' + (data.error || 'Checkout failed') + '</div>';
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = '<div class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>NFC reader not available</div>';
+    });
+}
+
+function showSuccessModal() {
+    new bootstrap.Modal(document.getElementById('successModal')).show();
+}
+
+function showAlert(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : type === 'warning' ? 'alert-warning' : 'alert-danger';
+    const icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas fa-${icon} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    const container = document.querySelector('.card-body');
+    container.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) {
+            bootstrap.Alert.getOrCreateInstance(alert).close();
+        }
+    }, 5000);
+}
+
+// NFC Animation
+setInterval(() => {
+    const nfcIcon = document.querySelector('.nfc-animation i');
+    if (nfcIcon) {
+        nfcIcon.classList.toggle('fa-pulse');
+    }
+}, 1000);
+</script>
+
+<style>
+.book-cover {
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+}
+
+.nfc-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.bg-gradient {
+    background: linear-gradient(45deg, var(--bs-primary), rgba(0,0,0,0.1)) !important;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

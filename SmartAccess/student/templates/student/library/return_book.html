@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Return Book - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'library_dashboard' %}">Library</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'book_detail' pk=borrow.book.id %}">{{ borrow.book.title|truncatechars:20 }}</a></li>
+            <li class="breadcrumb-item active">Return Book</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-undo text-primary me-2"></i>
+                        Return Book
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Borrow Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            {% if borrow.book.cover_image %}
+                                <img src="{{ borrow.book.cover_image.url }}" alt="{{ borrow.book.title }}" 
+                                     class="img-fluid rounded shadow-sm" style="max-height: 250px;">
+                            {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                     style="height: 250px; width: 100%;">
+                                    <i class="fas fa-book text-muted" style="font-size: 3rem;"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <h5 class="mb-3">{{ borrow.book.title }}</h5>
+                            
+                            <div class="alert alert-info mb-3">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Borrow Details
+                                </h6>
+                                <table class="table table-borderless table-sm mb-0">
+                                    <tr>
+                                        <td class="text-muted" width="40%">Student:</td>
+                                        <td>{{ borrow.student.full_name }} ({{ borrow.student.roll_number }})</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Borrow Date:</td>
+                                        <td>{{ borrow.borrow_date|date:"F j, Y" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Due Date:</td>
+                                        <td>
+                                            {{ borrow.due_date|date:"F j, Y" }}
+                                            {% if borrow.is_overdue %}
+                                                <span class="badge bg-danger ms-2">Overdue</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Status:</td>
+                                        <td>
+                                            <span class="badge bg-{% if borrow.status == 'active' %}primary{% elif borrow.status == 'overdue' %}danger{% else %}success{% endif %}">
+                                                {{ borrow.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% if borrow.is_overdue and borrow.fine_amount %}
+                                    <tr>
+                                        <td class="text-muted">Fine Amount:</td>
+                                        <td>
+                                            <span class="badge bg-warning text-dark">₹{{ borrow.fine_amount }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+
+                            {% if borrow.is_overdue %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Overdue Book!</strong> This book is {{ borrow.days_overdue }} day{{ borrow.days_overdue|pluralize }} overdue.
+                                    {% if borrow.fine_amount %}
+                                        A fine of ₹{{ borrow.fine_amount }} may apply.
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Return Form -->
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <!-- Error Display -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Return Notes -->
+                        <div class="mb-3">
+                            <label for="{{ form.return_notes.id_for_label }}" class="form-label">
+                                Return Notes (Optional)
+                            </label>
+                            {{ form.return_notes }}
+                            {% if form.return_notes.errors %}
+                                <div class="text-danger small">
+                                    {{ form.return_notes.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Note any book condition or issues (damage, missing pages, etc.)
+                            </div>
+                        </div>
+
+                        <!-- Book Condition -->
+                        {% if form.book_condition %}
+                        <div class="mb-3">
+                            <label for="{{ form.book_condition.id_for_label }}" class="form-label">
+                                Book Condition
+                            </label>
+                            {{ form.book_condition }}
+                            {% if form.book_condition.errors %}
+                                <div class="text-danger small">
+                                    {{ form.book_condition.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'book_detail' pk=borrow.book.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>
+                                Back to Book
+                            </a>
+                            
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check me-1"></i>
+                                Return Book
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table td {
+    padding: 0.25rem 0;
+}
+</style>
+{% endblock %}

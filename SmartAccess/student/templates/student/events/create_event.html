@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    {% if editing %}Edit Event{% else %}Create Event{% endif %} - SmartAccess Portal
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'event_list' %}">Events</a></li>
+            {% if editing %}
+                <li class="breadcrumb-item"><a href="{% url 'event_detail' event.id %}">{{ event.title }}</a></li>
+                <li class="breadcrumb-item active">Edit</li>
+            {% else %}
+                <li class="breadcrumb-item active">Create Event</li>
+            {% endif %}
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-{% if editing %}edit{% else %}plus{% endif %} me-2"></i>
+                        {% if editing %}Edit Event{% else %}Create New Event{% endif %}
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <!-- Basic Information -->
+                            <div class="col-md-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>Basic Information
+                                </h6>
+                            </div>
+                            
+                            <div class="col-md-8 mb-3">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">
+                                    <i class="fas fa-heading me-2"></i>Event Title *
+                                </label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                    <div class="text-danger small">{{ form.title.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.category.id_for_label }}" class="form-label">
+                                    <i class="fas fa-tag me-2"></i>Category *
+                                </label>
+                                {{ form.category }}
+                                {% if form.category.errors %}
+                                    <div class="text-danger small">{{ form.category.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">
+                                    <i class="fas fa-align-left me-2"></i>Description *
+                                </label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                    <div class="text-danger small">{{ form.description.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.venue.id_for_label }}" class="form-label">
+                                    <i class="fas fa-map-marker-alt me-2"></i>Venue *
+                                </label>
+                                {{ form.venue }}
+                                {% if form.venue.errors %}
+                                    <div class="text-danger small">{{ form.venue.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.organizer.id_for_label }}" class="form-label">
+                                    <i class="fas fa-user me-2"></i>Organizer
+                                </label>
+                                {{ form.organizer }}
+                                {% if form.organizer.errors %}
+                                    <div class="text-danger small">{{ form.organizer.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="row">
+                            <!-- Date & Time Information -->
+                            <div class="col-md-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-calendar me-2"></i>Schedule
+                                </h6>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.start_datetime.id_for_label }}" class="form-label">
+                                    <i class="fas fa-play me-2"></i>Start Date & Time *
+                                </label>
+                                {{ form.start_datetime }}
+                                {% if form.start_datetime.errors %}
+                                    <div class="text-danger small">{{ form.start_datetime.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.end_datetime.id_for_label }}" class="form-label">
+                                    <i class="fas fa-stop me-2"></i>End Date & Time *
+                                </label>
+                                {{ form.end_datetime }}
+                                {% if form.end_datetime.errors %}
+                                    <div class="text-danger small">{{ form.end_datetime.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.registration_deadline.id_for_label }}" class="form-label">
+                                    <i class="fas fa-clock me-2"></i>Registration Deadline *
+                                </label>
+                                {{ form.registration_deadline }}
+                                {% if form.registration_deadline.errors %}
+                                    <div class="text-danger small">{{ form.registration_deadline.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="row">
+                            <!-- Capacity & Fee -->
+                            <div class="col-md-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-users me-2"></i>Capacity & Registration
+                                </h6>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.max_capacity.id_for_label }}" class="form-label">
+                                    <i class="fas fa-users me-2"></i>Max Capacity *
+                                </label>
+                                {{ form.max_capacity }}
+                                {% if form.max_capacity.errors %}
+                                    <div class="text-danger small">{{ form.max_capacity.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.registration_fee.id_for_label }}" class="form-label">
+                                    <i class="fas fa-dollar-sign me-2"></i>Registration Fee
+                                </label>
+                                {{ form.registration_fee }}
+                                <small class="form-text text-muted">Leave as 0 for free events</small>
+                                {% if form.registration_fee.errors %}
+                                    <div class="text-danger small">{{ form.registration_fee.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-4 mb-3 d-flex align-items-center">
+                                <div class="form-check">
+                                    {{ form.requires_nfc_checkin }}
+                                    <label for="{{ form.requires_nfc_checkin.id_for_label }}" class="form-check-label">
+                                        <i class="fas fa-wifi me-2"></i>Require NFC Check-in
+                                    </label>
+                                </div>
+                                {% if form.requires_nfc_checkin.errors %}
+                                    <div class="text-danger small">{{ form.requires_nfc_checkin.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="row">
+                            <!-- Event Image -->
+                            <div class="col-md-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-image me-2"></i>Event Image
+                                </h6>
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <label for="{{ form.image.id_for_label }}" class="form-label">
+                                    <i class="fas fa-upload me-2"></i>Upload Image (Optional)
+                                </label>
+                                {{ form.image }}
+                                <small class="form-text text-muted">Recommended size: 800x400 pixels</small>
+                                {% if form.image.errors %}
+                                    <div class="text-danger small">{{ form.image.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-between pt-3 border-top">
+                            <a href="{% if editing %}{% url 'event_detail' event.id %}{% else %}{% url 'event_list' %}{% endif %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fas fa-save me-2"></i>
+                                {% if editing %}Update Event{% else %}Create Event{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for dropdowns
+    $('#{{ form.category.id_for_label }}, #{{ form.organizer.id_for_label }}').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+
+    // Set minimum datetime to current time
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localTime = new Date(now.getTime() - offset);
+    const minDateTime = localTime.toISOString().slice(0, 16);
+    
+    $('#{{ form.start_datetime.id_for_label }}, #{{ form.end_datetime.id_for_label }}, #{{ form.registration_deadline.id_for_label }}')
+        .attr('min', minDateTime);
+});
+</script>
+{% endblock %}
