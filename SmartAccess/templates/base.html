@@ -141,9 +141,27 @@
                 <a href="{% url 'view_logs' %}" class="nav-link {% if request.resolver_match.url_name == 'view_logs' %}active{% endif %}">
                     <i class="fas fa-history"></i> Entry Logs
                 </a>
-                <a href="{% url 'event_list' %}" class="nav-link {% if 'event' in request.resolver_match.url_name %}active{% endif %}">
-                    <i class="fas fa-calendar-alt"></i> Events
-                </a>
+                <div class="dropdown">
+                    <a href="#" class="nav-link dropdown-toggle {% if 'event' in request.resolver_match.url_name %}active{% endif %}" 
+                       data-bs-toggle="dropdown" role="button">
+                        <i class="fas fa-calendar-alt"></i> Events
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'teacher_event_dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Event Dashboard
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'event_list' %}">
+                            <i class="fas fa-list me-2"></i>All Events
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'create_event' %}">
+                            <i class="fas fa-plus me-2"></i>Create Event
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'category_list' %}">
+                            <i class="fas fa-tags me-2"></i>Manage Categories
+                        </a></li>
+                    </ul>
+                </div>
                 <a href="{% url 'library_dashboard' %}" class="nav-link {% if 'library' in request.resolver_match.url_name or 'book' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-books"></i> Library
                 </a>

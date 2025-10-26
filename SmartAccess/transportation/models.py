@@ -114,6 +114,19 @@ class TransportLog(models.Model):
             return self.alighting_time - self.boarding_time
         return None
 
+    def get_travel_duration_display(self):
+        """Get formatted travel duration string"""
+        duration = self.get_travel_duration()
+        if duration:
+            total_seconds = int(duration.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            if hours > 0:
+                return f"{hours}h {minutes}m"
+            else:
+                return f"{minutes}m"
+        return None
+
 
 class BusSchedule(models.Model):
     SCHEDULE_TYPE_CHOICES = [

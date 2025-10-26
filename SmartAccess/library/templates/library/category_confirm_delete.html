@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Delete Category - Library{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-container {
+        max-width: 500px;
+        margin: 50px auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .delete-header {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+    }
+    
+    .delete-body {
+        padding: 40px;
+        text-align: center;
+    }
+    
+    .category-info {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px 0;
+        border-left: 4px solid var(--category-color);
+    }
+    
+    .color-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 10px;
+        border: 2px solid white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .warning-box {
+        background: #fff3cd;
+        border: 1px solid #ffeeba;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 20px 0;
+        color: #856404;
+    }
+    
+    .error-box {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 20px 0;
+        color: #721c24;
+    }
+    
+    .btn-custom {
+        border-radius: 25px;
+        padding: 12px 30px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        margin: 0 10px;
+    }
+    
+    .btn-danger-custom {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+    }
+    
+    .btn-danger-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+    }
+    
+    .btn-secondary-custom {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn-secondary-custom:hover {
+        background: #5a6268;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="delete-container">
+        <div class="delete-header">
+            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+            <h2 class="mb-0">Delete Book Category</h2>
+            <p class="mb-0 mt-2 opacity-75">This action cannot be undone</p>
+        </div>
+        
+        <div class="delete-body">
+            <div class="category-info" style="--category-color: {{ category.color }};">
+                <div class="d-flex align-items-center justify-content-center mb-3">
+                    <span class="color-indicator" style="background-color: {{ category.color }};"></span>
+                    <h5 class="mb-0">{{ category.name }}</h5>
+                </div>
+                {% if category.description %}
+                    <p class="text-muted mb-0">{{ category.description }}</p>
+                {% endif %}
+            </div>
+
+            {% if books_count > 0 %}
+                <!-- Cannot Delete - Has Books -->
+                <div class="error-box">
+                    <i class="fas fa-ban me-2"></i>
+                    <strong>Cannot Delete Category</strong>
+                    <p class="mb-0 mt-2">
+                        This category cannot be deleted because it has <strong>{{ books_count }}</strong> 
+                        book{{ books_count|pluralize }} assigned to it.
+                    </p>
+                    <p class="mb-0 mt-2">
+                        Please reassign or remove all books from this category before deleting it.
+                    </p>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{% url 'book_list' %}?category={{ category.pk }}" class="btn btn-info btn-custom">
+                        <i class="fas fa-books me-2"></i>
+                        View Books in Category
+                    </a>
+                    <a href="{% url 'library_category_list' %}" class="btn btn-secondary-custom btn-custom">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Back to Categories
+                    </a>
+                </div>
+            {% else %}
+                <!-- Can Delete - No Books -->
+                <div class="warning-box">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Are you sure?</strong>
+                    <p class="mb-0 mt-2">
+                        You are about to permanently delete the "{{ category.name }}" category. 
+                        This action cannot be undone.
+                    </p>
+                </div>
+                
+                <p class="text-muted">
+                    Since this category has no books assigned to it, it can be safely deleted.
+                </p>
+                
+                <form method="post" class="mt-4" onsubmit="return confirmDelete();">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger-custom btn-custom">
+                        <i class="fas fa-trash me-2"></i>
+                        Yes, Delete Category
+                    </button>
+                    <a href="{% url 'library_category_list' %}" class="btn btn-secondary-custom btn-custom">
+                        <i class="fas fa-times me-2"></i>
+                        Cancel
+                    </a>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmDelete() {
+        return confirm('Are you absolutely sure you want to delete the "{{ category.name }}" category? This action cannot be undone.');
+    }
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Escape key to go back
+        if (e.key === 'Escape') {
+            window.location.href = '{% url "library_category_list" %}';
+        }
+        // Enter key to confirm delete (only if no books)
+        {% if books_count == 0 %}
+        if (e.key === 'Enter' && e.ctrlKey) {
+            if (confirmDelete()) {
+                document.querySelector('form').submit();
+            }
+        }
+        {% endif %}
+    });
+</script>
+{% endblock %}

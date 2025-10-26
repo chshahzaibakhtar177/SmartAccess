@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} Category - SmartAccess Portal{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'event_list' %}">Events</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'category_list' %}">Categories</a></li>
+            <li class="breadcrumb-item active">{{ action }}</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-{% if action == 'Create' %}plus{% else %}edit{% endif %} me-2"></i>
+                        {{ action }} Event Category
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <!-- Category Name -->
+                            <div class="col-md-8 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">
+                                    <i class="fas fa-tag me-2"></i>Category Name *
+                                </label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                    <div class="text-danger small">{{ form.name.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Choose a clear, descriptive name for this category
+                                </small>
+                            </div>
+                            
+                            <!-- Color Picker -->
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.color.id_for_label }}" class="form-label">
+                                    <i class="fas fa-palette me-2"></i>Color *
+                                </label>
+                                <div class="input-group">
+                                    {{ form.color }}
+                                    <div class="input-group-text" id="color-preview" style="background-color: {{ form.color.value|default:'#007bff' }}; width: 40px;"></div>
+                                </div>
+                                {% if form.color.errors %}
+                                    <div class="text-danger small">{{ form.color.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Pick a unique color for visual identification
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="mb-4">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                <i class="fas fa-align-left me-2"></i>Description
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="text-danger small">{{ form.description.errors.0 }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Provide a brief description of what events belong to this category
+                            </small>
+                        </div>
+                        
+                        <!-- Preview Section -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-eye me-2"></i>Preview
+                            </label>
+                            <div class="card border" id="category-preview">
+                                <div class="card-header d-flex align-items-center" style="background-color: {{ form.color.value|default:'#007bff' }}20; border-left: 4px solid {{ form.color.value|default:'#007bff' }};">
+                                    <div class="me-3">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center" 
+                                             style="width: 35px; height: 35px; background-color: {{ form.color.value|default:'#007bff' }};">
+                                            <i class="fas fa-tag text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0" id="preview-name">
+                                            {% if category %}{{ category.name }}{% else %}Category Name{% endif %}
+                                        </h6>
+                                        <small class="text-muted">0 events</small>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text text-muted mb-0" id="preview-description">
+                                        {% if category %}{{ category.description }}{% else %}Category description will appear here{% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'category_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>{{ action }} Category
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Live preview updates
+    function updatePreview() {
+        var name = $('#{{ form.name.id_for_label }}').val() || 'Category Name';
+        var description = $('#{{ form.description.id_for_label }}').val() || 'Category description will appear here';
+        var color = $('#{{ form.color.id_for_label }}').val() || '#007bff';
+        
+        $('#preview-name').text(name);
+        $('#preview-description').text(description);
+        $('#color-preview').css('background-color', color);
+        
+        var headerStyle = 'background-color: ' + color + '20; border-left: 4px solid ' + color + ';';
+        var iconStyle = 'background-color: ' + color + ';';
+        
+        $('#category-preview .card-header').attr('style', headerStyle);
+        $('#category-preview .rounded-circle').attr('style', 'width: 35px; height: 35px; ' + iconStyle);
+    }
+    
+    // Bind events for live preview
+    $('#{{ form.name.id_for_label }}, #{{ form.description.id_for_label }}, #{{ form.color.id_for_label }}').on('input change', updatePreview);
+    
+    // Initialize preview
+    updatePreview();
+    
+    // Form validation
+    $('form').on('submit', function(e) {
+        var name = $('#{{ form.name.id_for_label }}').val().trim();
+        
+        if (!name) {
+            e.preventDefault();
+            $('#{{ form.name.id_for_label }}').addClass('is-invalid');
+            $('#{{ form.name.id_for_label }}').focus();
+            return false;
+        } else {
+            $('#{{ form.name.id_for_label }}').removeClass('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}

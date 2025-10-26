@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Alumni Directory - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">Alumni Directory</h1>
+        <p class="text-muted">Connect with fellow alumni</p>
+    </div>
+    <div>
+        <a href="{% url 'alumni:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Search and Filter Section -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-search"></i> Search Alumni
+        </h6>
+    </div>
+    <div class="card-body">
+        <form method="get" id="searchForm">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ search_query }}" 
+                           placeholder="Name, email, course, position, or company...">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="graduation_year" class="form-label">Graduation Year</label>
+                    <select class="form-select" id="graduation_year" name="graduation_year">
+                        <option value="">All Years</option>
+                        {% for year in graduation_years %}
+                            <option value="{{ year }}" {% if year == selected_graduation_year %}selected{% endif %}>
+                                {{ year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="department" class="form-label">Department</label>
+                    <select class="form-select" id="department" name="department">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                            <option value="{{ dept }}" {% if dept == selected_department %}selected{% endif %}>
+                                {{ dept }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </div>
+            {% if search_query or selected_graduation_year or selected_department %}
+            <div class="row">
+                <div class="col-12">
+                    <a href="{% url 'alumni:directory' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Alumni Results -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-success">
+            <i class="fas fa-users"></i> Alumni Directory
+            {% if alumni_list %}
+                <span class="badge bg-secondary ms-2">{{ alumni_list.paginator.count }} result{{ alumni_list.paginator.count|pluralize }}</span>
+            {% endif %}
+        </h6>
+        <div class="dropdown">
+            <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" 
+                    id="viewOptions" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-eye"></i> View Options
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="viewOptions">
+                <li><a class="dropdown-item" href="#" onclick="toggleView('grid')">
+                    <i class="fas fa-th-large"></i> Grid View</a></li>
+                <li><a class="dropdown-item" href="#" onclick="toggleView('list')">
+                    <i class="fas fa-list"></i> List View</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if alumni_list %}
+            <!-- Grid View (Default) -->
+            <div id="gridView" class="alumni-grid">
+                <div class="row">
+                    {% for alumni in alumni_list %}
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="card alumni-card h-100">
+                            <div class="card-body text-center">
+                                {% if alumni.profile_photo %}
+                                    <img src="{{ alumni.profile_photo.url }}" alt="Profile Photo" 
+                                         class="rounded-circle mb-3" width="80" height="80" style="object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-secondary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                                         style="width: 80px; height: 80px;">
+                                        <i class="fas fa-user fa-2x text-white"></i>
+                                    </div>
+                                {% endif %}
+                                
+                                <h6 class="card-title mb-2">
+                                    <a href="{% url 'alumni:detail' alumni.id %}" class="text-decoration-none">
+                                        {{ alumni.user.get_full_name }}
+                                    </a>
+                                </h6>
+                                
+                                <div class="text-muted mb-2">
+                                    <small>{{ alumni.course }}</small><br>
+                                    <small>Class of {{ alumni.graduation_year }}</small>
+                                </div>
+                                
+                                {% if alumni.current_position %}
+                                <div class="text-primary mb-2">
+                                    <small><strong>{{ alumni.current_position }}</strong></small>
+                                    {% if alumni.company %}
+                                        <br><small class="text-muted">at {{ alumni.company }}</small>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mt-auto">
+                                    <a href="{% url 'alumni:detail' alumni.id %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye"></i> View Profile
+                                    </a>
+                                    {% if alumni.linkedin_profile %}
+                                    <a href="{{ alumni.linkedin_profile }}" target="_blank" 
+                                       class="btn btn-outline-info btn-sm ms-1">
+                                        <i class="fab fa-linkedin"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- List View (Hidden by default) -->
+            <div id="listView" class="alumni-list" style="display: none;">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Course</th>
+                                <th>Graduation Year</th>
+                                <th>Current Position</th>
+                                <th>Company</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alumni in alumni_list %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if alumni.profile_photo %}
+                                            <img src="{{ alumni.profile_photo.url }}" alt="Profile" 
+                                                 class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
+                                        {% else %}
+                                            <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                 style="width: 40px; height: 40px; min-width: 40px;">
+                                                <i class="fas fa-user text-white"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ alumni.user.get_full_name }}</strong><br>
+                                            <small class="text-muted">{{ alumni.user.email }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ alumni.course }}</td>
+                                <td>{{ alumni.graduation_year }}</td>
+                                <td>{{ alumni.current_position|default:"-" }}</td>
+                                <td>{{ alumni.company|default:"-" }}</td>
+                                <td>
+                                    <a href="{% url 'alumni:detail' alumni.id %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if alumni.linkedin_profile %}
+                                    <a href="{{ alumni.linkedin_profile }}" target="_blank" 
+                                       class="btn btn-outline-info btn-sm ms-1">
+                                        <i class="fab fa-linkedin"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            {% if alumni_list.has_other_pages %}
+            <nav aria-label="Alumni pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if alumni_list.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_department %}department={{ selected_department }}&{% endif %}page={{ alumni_list.previous_page_number }}">
+                                Previous
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Previous</span>
+                        </li>
+                    {% endif %}
+
+                    {% for num in alumni_list.paginator.page_range %}
+                        {% if alumni_list.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > alumni_list.number|add:'-3' and num < alumni_list.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_department %}department={{ selected_department }}&{% endif %}page={{ num }}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if alumni_list.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_department %}department={{ selected_department }}&{% endif %}page={{ alumni_list.next_page_number }}">
+                                Next
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Next</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">
+                    {% if search_query or selected_graduation_year or selected_department %}
+                        No alumni found matching your criteria
+                    {% else %}
+                        No alumni in directory yet
+                    {% endif %}
+                </h4>
+                <p class="text-muted">
+                    {% if search_query or selected_graduation_year or selected_department %}
+                        Try adjusting your search criteria or clearing the filters.
+                    {% else %}
+                        Alumni profiles will appear here once they are added to the system.
+                    {% endif %}
+                </p>
+                {% if search_query or selected_graduation_year or selected_department %}
+                <a href="{% url 'alumni:directory' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-times"></i> Clear All Filters
+                </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// View toggle functionality
+function toggleView(viewType) {
+    const gridView = document.getElementById('gridView');
+    const listView = document.getElementById('listView');
+    
+    if (viewType === 'grid') {
+        gridView.style.display = 'block';
+        listView.style.display = 'none';
+        localStorage.setItem('alumniViewPreference', 'grid');
+    } else {
+        gridView.style.display = 'none';
+        listView.style.display = 'block';
+        localStorage.setItem('alumniViewPreference', 'list');
+    }
+}
+
+// Load saved view preference
+document.addEventListener('DOMContentLoaded', function() {
+    const savedView = localStorage.getItem('alumniViewPreference');
+    if (savedView) {
+        toggleView(savedView);
+    }
+
+    // Add hover effects to alumni cards
+    const alumniCards = document.querySelectorAll('.alumni-card');
+    alumniCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '';
+        });
+    });
+
+    // Auto-submit form on filter change
+    const graduationYearSelect = document.getElementById('graduation_year');
+    const departmentSelect = document.getElementById('department');
+    
+    graduationYearSelect.addEventListener('change', function() {
+        document.getElementById('searchForm').submit();
+    });
+    
+    departmentSelect.addEventListener('change', function() {
+        document.getElementById('searchForm').submit();
+    });
+});
+</script>
+
+<style>
+.alumni-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.alumni-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.form-select:focus,
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

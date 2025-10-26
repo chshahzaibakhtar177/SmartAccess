@@ -12,7 +12,7 @@ import json
 # Import from the modular models
 from .models import Book, BookCategory, BookBorrow, BookReservation
 from students.models import Student
-from .forms import BookForm, BookSearchForm, BookBorrowForm, BookReturnForm, BookReservationForm
+from .forms import BookForm, BookSearchForm, BookBorrowForm, BookReturnForm, BookReservationForm, BookCategoryForm
 from authentication.decorators import teacher_required, student_required
 
 # Library management views - migrated from legacy student app
@@ -84,7 +84,7 @@ def add_book(request):
             return redirect('book_list')
     else:
         form = BookForm()
-    return render(request, 'library/add_book.html', {'form': form})
+    return render(request, 'library/book_form.html', {'form': form})
 
 
 @login_required
@@ -100,7 +100,7 @@ def edit_book(request, pk):
             return redirect('book_detail', pk=book.pk)
     else:
         form = BookForm(instance=book)
-    return render(request, 'library/edit_book.html', {'form': form, 'book': book})
+    return render(request, 'library/book_form.html', {'form': form, 'book': book})
 
 
 @login_required
@@ -174,7 +174,7 @@ def overdue_books_report(request):
         'overdue_borrows': overdue_borrows,
         'total_overdue': overdue_borrows.count()
     }
-    return render(request, 'library/overdue_books_report.html', context)
+    return render(request, 'library/overdue_report.html', context)
 
 @login_required
 def cancel_reservation(request, reservation_id):
@@ -182,7 +182,16 @@ def cancel_reservation(request, reservation_id):
     reservation = get_object_or_404(BookReservation, id=reservation_id)
     
     # Check permissions
-    if reservation.student != request.user.student_profile:
+    try:
+        user_student = request.user.student_profile
+        if reservation.student != user_student:
+            messages.error(request, "You don't have permission to cancel this reservation.")
+            return redirect('book_detail', pk=reservation.book.id)
+    except Student.DoesNotExist:
+        messages.error(request, "Student profile not found. Please contact administrator.")
+        return redirect('login')
+    
+    if reservation.student != user_student:
         messages.error(request, "You don't have permission to cancel this reservation.")
         return redirect('book_detail', pk=reservation.book.id)
     
@@ -196,3 +205,83 @@ def cancel_reservation(request, reservation_id):
     
     messages.success(request, f'Reservation for "{book_title}" cancelled successfully.')
     return redirect('student_library_dashboard')
+
+
+# Book Category Management Views
+@login_required
+@teacher_required
+def category_list(request):
+    """List all book categories"""
+    categories = BookCategory.objects.all().order_by('name')
+    context = {
+        'categories': categories,
+        'total_categories': categories.count(),
+    }
+    return render(request, 'library/category_list.html', context)
+
+
+@login_required
+@teacher_required
+def category_create(request):
+    """Create new book category"""
+    if request.method == 'POST':
+        form = BookCategoryForm(request.POST)
+        if form.is_valid():
+            category = form.save()
+            messages.success(request, f'Book category "{category.name}" created successfully!')
+            return redirect('library_category_list')
+    else:
+        form = BookCategoryForm()
+    
+    return render(request, 'library/category_form.html', {
+        'form': form,
+        'title': 'Create Book Category',
+        'submit_text': 'Create Category'
+    })
+
+
+@login_required
+@teacher_required
+def category_edit(request, pk):
+    """Edit existing book category"""
+    category = get_object_or_404(BookCategory, pk=pk)
+    
+    if request.method == 'POST':
+        form = BookCategoryForm(request.POST, instance=category)
+        if form.is_valid():
+            category = form.save()
+            messages.success(request, f'Book category "{category.name}" updated successfully!')
+            return redirect('library_category_list')
+    else:
+        form = BookCategoryForm(instance=category)
+    
+    return render(request, 'library/category_form.html', {
+        'form': form,
+        'category': category,
+        'title': 'Edit Book Category',
+        'submit_text': 'Update Category'
+    })
+
+
+@login_required
+@teacher_required
+def category_delete(request, pk):
+    """Delete book category"""
+    category = get_object_or_404(BookCategory, pk=pk)
+    
+    # Check if category has books
+    books_count = category.books.count()
+    
+    if request.method == 'POST':
+        if books_count > 0:
+            messages.error(request, f'Cannot delete category "{category.name}" because it has {books_count} book(s) assigned to it.')
+        else:
+            category_name = category.name
+            category.delete()
+            messages.success(request, f'Book category "{category_name}" deleted successfully!')
+        return redirect('library_category_list')
+    
+    return render(request, 'library/category_confirm_delete.html', {
+        'category': category,
+        'books_count': books_count
+    })

@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ alumni.user.get_full_name }} - Alumni Directory{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">Alumni Profile</h1>
+        <p class="text-muted">{{ alumni.user.get_full_name }}'s profile information</p>
+    </div>
+    <div>
+        <a href="{% url 'alumni:directory' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Directory
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Profile Information -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-body text-center">
+                {% if alumni.profile_photo %}
+                    <img src="{{ alumni.profile_photo.url }}" alt="Profile Photo" 
+                         class="rounded-circle mb-3" width="150" height="150" style="object-fit: cover;">
+                {% else %}
+                    <div class="bg-secondary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                         style="width: 150px; height: 150px;">
+                        <i class="fas fa-user fa-4x text-white"></i>
+                    </div>
+                {% endif %}
+                
+                <h4 class="mb-2">{{ alumni.user.get_full_name }}</h4>
+                <p class="text-muted mb-1">{{ alumni.course }}</p>
+                <p class="text-muted mb-1">{{ alumni.department }}</p>
+                <p class="text-primary mb-0">Class of {{ alumni.graduation_year }}</p>
+                
+                {% if alumni.current_position %}
+                <hr>
+                <div class="mb-3">
+                    <h6 class="text-primary">{{ alumni.current_position }}</h6>
+                    {% if alumni.company %}
+                        <p class="text-muted mb-0">{{ alumni.company }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <!-- Contact Actions -->
+                <div class="mt-3">
+                    {% if alumni.linkedin_profile %}
+                    <a href="{{ alumni.linkedin_profile }}" target="_blank" class="btn btn-outline-primary btn-sm me-2">
+                        <i class="fab fa-linkedin"></i> LinkedIn
+                    </a>
+                    {% endif %}
+                    <a href="mailto:{{ alumni.user.email }}" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-envelope"></i> Email
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-bar"></i> Quick Stats
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-12 mb-3">
+                        <h5 class="text-primary">{{ event_participations|length }}</h5>
+                        <small class="text-muted">Events Participated</small>
+                    </div>
+                    {% if show_connections %}
+                    <div class="col-12 mb-3">
+                        <h5 class="text-success">{{ networking_connections|length }}</h5>
+                        <small class="text-muted">Network Connections</small>
+                    </div>
+                    {% endif %}
+                    <div class="col-12 mb-3">
+                        <h5 class="text-info">{{ job_postings|length }}</h5>
+                        <small class="text-muted">Job Postings</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Information and Activities -->
+    <div class="col-lg-8">
+        <!-- Academic Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-graduation-cap"></i> Academic Background
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Student ID</label>
+                        <p class="form-control-static">{{ alumni.student_id }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Course/Program</label>
+                        <p class="form-control-static">{{ alumni.course }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Department</label>
+                        <p class="form-control-static">{{ alumni.department }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Graduation Year</label>
+                        <p class="form-control-static">{{ alumni.graduation_year }}</p>
+                    </div>
+                    {% if alumni.graduation_date %}
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Graduation Date</label>
+                        <p class="form-control-static">{{ alumni.graduation_date|date:"F d, Y" }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Participation History -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="fas fa-calendar-check"></i> Event Participation History
+                </h6>
+                <span class="badge bg-success">{{ event_participations|length }} event{{ event_participations|length|pluralize }}</span>
+            </div>
+            <div class="card-body">
+                {% if event_participations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Event Date</th>
+                                    <th>Participation Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for participation in event_participations %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ participation.event.name }}</strong>
+                                        {% if participation.event.category %}
+                                            <br><small class="text-muted">{{ participation.event.category.name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ participation.event.event_date|date:"M d, Y" }}<br>
+                                        <small class="text-muted">{{ participation.event.event_time|time:"g:i A" }}</small>
+                                    </td>
+                                    <td>{{ participation.participation_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if participation.event.event_date > today %}
+                                            <span class="badge bg-primary">Upcoming</span>
+                                        {% elif participation.event.event_date == today %}
+                                            <span class="badge bg-warning">Today</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Attended</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No event participation yet</h6>
+                        <p class="text-muted">This alumni hasn't participated in any events yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Network Connections -->
+        {% if show_connections %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="fas fa-users"></i> Network Connections
+                </h6>
+                <span class="badge bg-info">{{ networking_connections|length }} connection{{ networking_connections|length|pluralize }}</span>
+            </div>
+            <div class="card-body">
+                {% if networking_connections %}
+                    <div class="row">
+                        {% for connection in networking_connections %}
+                            {% if connection.alumni1.id == alumni.id %}
+                                {% with connected_alumni=connection.alumni2 %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        {% if connected_alumni.profile_photo %}
+                                            <img src="{{ connected_alumni.profile_photo.url }}" alt="Profile" 
+                                                 class="rounded-circle me-3" width="50" height="50" style="object-fit: cover;">
+                                        {% else %}
+                                            <div class="bg-secondary rounded-circle me-3 d-flex align-items-center justify-content-center" 
+                                                 style="width: 50px; height: 50px;">
+                                                <i class="fas fa-user text-white"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="mb-0">
+                                                <a href="{% url 'alumni:detail' connected_alumni.id %}" class="text-decoration-none">
+                                                    {{ connected_alumni.user.get_full_name }}
+                                                </a>
+                                            </h6>
+                                            <small class="text-muted">Class of {{ connected_alumni.graduation_year }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+                            {% else %}
+                                {% with connected_alumni=connection.alumni1 %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        {% if connected_alumni.profile_photo %}
+                                            <img src="{{ connected_alumni.profile_photo.url }}" alt="Profile" 
+                                                 class="rounded-circle me-3" width="50" height="50" style="object-fit: cover;">
+                                        {% else %}
+                                            <div class="bg-secondary rounded-circle me-3 d-flex align-items-center justify-content-center" 
+                                                 style="width: 50px; height: 50px;">
+                                                <i class="fas fa-user text-white"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="mb-0">
+                                                <a href="{% url 'alumni:detail' connected_alumni.id %}" class="text-decoration-none">
+                                                    {{ connected_alumni.user.get_full_name }}
+                                                </a>
+                                            </h6>
+                                            <small class="text-muted">Class of {{ connected_alumni.graduation_year }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-user-friends fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No network connections visible</h6>
+                        <p class="text-muted">Network connections are private or not established yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Job Postings -->
+        {% if job_postings %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="fas fa-briefcase"></i> Job Opportunities
+                </h6>
+                <span class="badge bg-warning text-dark">{{ job_postings|length }} posting{{ job_postings|length|pluralize }}</span>
+            </div>
+            <div class="card-body">
+                {% for job in job_postings %}
+                <div class="card mb-3 border-left-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="card-title mb-2">{{ job.title }}</h6>
+                                <p class="text-muted mb-1">{{ job.company }}</p>
+                                <p class="card-text">{{ job.description|truncatewords:20 }}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar"></i> Posted {{ job.created_at|date:"M d, Y" }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                {% if job.salary_range %}
+                                    <p class="text-success font-weight-bold mb-1">${{ job.salary_range }}</p>
+                                {% endif %}
+                                <span class="badge bg-success">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.form-control-static {
+    padding: 0.375rem 0;
+    margin-bottom: 0;
+    min-height: calc(1.5em + 0.75rem + 2px);
+    font-weight: 500;
+    color: #495057;
+}
+
+.border-left-warning {
+    border-left: 4px solid #ffc107 !important;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+</style>
+{% endblock %}

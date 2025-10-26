@@ -366,11 +366,18 @@ def transportation_analytics(request):
     daily_stats = TransportLog.objects.filter(
         boarding_time__date__gte=last_week
     ).extra({
-        'day': 'date(boarding_time)'
+        'day': "date(boarding_time)"
     }).values('day').annotate(
         total_rides=Count('id'),
         unique_users=Count('user', distinct=True)
     ).order_by('day')
+    
+    # Calculate average rides per user
+    for stat in daily_stats:
+        if stat['unique_users'] > 0:
+            stat['avg_rides_per_user'] = stat['total_rides'] / stat['unique_users']
+        else:
+            stat['avg_rides_per_user'] = 0
     
     # Bus utilization
     bus_stats = Bus.objects.filter(is_active=True).annotate(
@@ -378,25 +385,51 @@ def transportation_analytics(request):
         weekly_rides=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_week))
     ).order_by('-monthly_rides')
     
+    # Calculate occupancy rate and progress bar width for each bus
+    max_bus_rides = max([bus.monthly_rides for bus in bus_stats]) if bus_stats else 1
+    for bus in bus_stats:
+        if bus.capacity > 0:
+            # Calculate average daily usage for the month
+            avg_daily_usage = bus.monthly_rides / 30
+            bus.occupancy_rate = (avg_daily_usage / bus.capacity) * 100
+        else:
+            bus.occupancy_rate = 0
+        # Calculate progress bar width (0-100%)
+        bus.progress_width = (bus.monthly_rides / max_bus_rides * 100) if max_bus_rides > 0 else 0
+    
     # Route popularity
     route_stats = Route.objects.filter(status='active').annotate(
         monthly_usage=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_month))
     ).order_by('-monthly_usage')
     
+    # Calculate progress bar width for routes
+    max_route_usage = max([route.monthly_usage for route in route_stats]) if route_stats else 1
+    for route in route_stats:
+        route.progress_width = (route.monthly_usage / max_route_usage * 100) if max_route_usage > 0 else 0
+    
     # Peak hours analysis
     peak_hours = TransportLog.objects.filter(
         boarding_time__date__gte=last_week
     ).extra({
-        'hour': 'extract(hour from boarding_time)'
+        'hour': "strftime('%%H', boarding_time)"
     }).values('hour').annotate(
         rides_count=Count('id')
     ).order_by('-rides_count')
+    
+    # Calculate progress bar width for peak hours and avg rides per hour
+    max_hour_rides = max([hour['rides_count'] for hour in peak_hours]) if peak_hours else 1
+    total_rides_in_peak = sum([hour['rides_count'] for hour in peak_hours])
+    avg_rides_per_hour = (total_rides_in_peak / len(peak_hours)) if peak_hours else 0
+    
+    for hour in peak_hours:
+        hour['progress_width'] = (hour['rides_count'] / max_hour_rides * 100) if max_hour_rides > 0 else 0
     
     context = {
         'daily_stats': daily_stats,
         'bus_stats': bus_stats,
         'route_stats': route_stats,
         'peak_hours': peak_hours,
+        'avg_rides_per_hour': avg_rides_per_hour,
         'today': today,
         'last_week': last_week,
         'last_month': last_month,

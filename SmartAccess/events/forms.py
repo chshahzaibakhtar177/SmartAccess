@@ -65,13 +65,32 @@ class EventCategoryForm(forms.ModelForm):
         model = EventCategory
         fields = ['name', 'description', 'color']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter category name'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter category description'
+            }),
             'color': forms.TextInput(attrs={
                 'class': 'form-control',
-                'type': 'color'
+                'type': 'color',
+                'value': '#007bff'
             })
         }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            # Check for duplicate names (case insensitive)
+            existing = EventCategory.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise forms.ValidationError('A category with this name already exists.')
+        return name
 
 
 class EventRegistrationForm(forms.ModelForm):
@@ -125,7 +144,7 @@ class EventSearchForm(forms.Form):
     )
     
     status = forms.ChoiceField(
-        choices=SEARCH_CHOICES,
+        choices=[('all', 'All Status')] + Event.STATUS_CHOICES,
         required=False,
         initial='all',
         widget=forms.Select(attrs={'class': 'form-control'})

@@ -90,13 +90,47 @@ class BookCategoryForm(forms.ModelForm):
         model = BookCategory
         fields = ['name', 'description', 'color']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'color': forms.TextInput(attrs={
+            'name': forms.TextInput(attrs={
                 'class': 'form-control',
-                'type': 'color'
+                'placeholder': 'Enter category name',
+                'maxlength': '100'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter category description (optional)',
+                'rows': 3
+            }),
+            'color': forms.TextInput(attrs={
+                'class': 'form-control color-picker',
+                'type': 'color',
+                'value': '#6c757d'
             })
         }
+        help_texts = {
+            'color': 'Choose a color to represent this category in the interface'
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            name = name.strip()
+            # Check for duplicate names (case-insensitive)
+            existing = BookCategory.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise forms.ValidationError('A category with this name already exists.')
+        return name
+
+    def clean_color(self):
+        color = self.cleaned_data.get('color')
+        if color:
+            # Ensure color is in proper hex format
+            if not color.startswith('#'):
+                color = '#' + color
+            if not re.match(r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$', color):
+                raise forms.ValidationError('Please enter a valid hex color code.')
+        return color
 
 
 class BookBorrowForm(forms.ModelForm):

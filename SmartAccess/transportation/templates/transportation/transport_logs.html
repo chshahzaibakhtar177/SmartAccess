@@ -164,16 +164,10 @@
                                             <small class="text-muted">{{ log.boarding_time|time:"g:i A" }}</small>
                                         </td>
                                         <td>
-                                            {% if log.get_travel_duration %}
+                                            {% if log.get_travel_duration_display %}
                                                 <span class="badge bg-info">
                                                     <i class="fas fa-clock me-1"></i>
-                                                    {% with duration=log.get_travel_duration %}
-                                                        {% if duration.seconds >= 3600 %}
-                                                            {{ duration.seconds|floatformat:0|div:3600 }}h {{ duration.seconds|floatformat:0|mod:3600|div:60 }}m
-                                                        {% else %}
-                                                            {{ duration.seconds|floatformat:0|div:60 }}m
-                                                        {% endif %}
-                                                    {% endwith %}
+                                                    {{ log.get_travel_duration_display }}
                                                 </span>
                                             {% elif log.boarding_status == 'boarded' %}
                                                 <span class="badge bg-primary">

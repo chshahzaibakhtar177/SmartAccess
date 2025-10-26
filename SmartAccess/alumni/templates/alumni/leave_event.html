@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cancel Event Registration - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">Cancel Event Registration</h1>
+        <p class="text-muted">Cancel your registration for {{ event.name }}</p>
+    </div>
+    <div>
+        <a href="{% url 'alumni:events' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Events
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header py-3 bg-warning">
+                <h6 class="m-0 font-weight-bold text-dark">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Registration Cancellation
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- Event Details -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        {% if event.image %}
+                            <img src="{{ event.image.url }}" class="img-fluid rounded" alt="{{ event.name }}">
+                        {% else %}
+                            <div class="bg-secondary rounded d-flex align-items-center justify-content-center" 
+                                 style="height: 200px;">
+                                <i class="fas fa-calendar-alt fa-3x text-white"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h4 class="mb-3">{{ event.name }}</h4>
+                        
+                        <div class="mb-2">
+                            <i class="fas fa-calendar text-primary"></i>
+                            <strong>Date:</strong> {{ event.event_date|date:"F d, Y" }}
+                        </div>
+                        
+                        <div class="mb-2">
+                            <i class="fas fa-clock text-primary"></i>
+                            <strong>Time:</strong> {{ event.event_time|time:"g:i A" }}
+                        </div>
+                        
+                        {% if event.location %}
+                        <div class="mb-2">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <strong>Location:</strong> {{ event.location }}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-2">
+                            <i class="fas fa-user text-primary"></i>
+                            <strong>Registered:</strong> {{ participation.participation_date|date:"M d, Y g:i A" }}
+                        </div>
+                        
+                        {% if event.registration_fee and event.registration_fee > 0 %}
+                        <div class="mb-2">
+                            <i class="fas fa-dollar-sign text-success"></i>
+                            <strong>Registration Fee:</strong> ${{ event.registration_fee }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Warning Alert -->
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Important Information:</h6>
+                    <ul class="mb-0">
+                        <li>Your registration for "{{ event.name }}" will be permanently cancelled</li>
+                        <li>You can re-register later if spots are still available</li>
+                        {% if event.registration_fee and event.registration_fee > 0 %}
+                        <li>Refund policies may apply - check event terms and conditions</li>
+                        {% endif %}
+                        <li>You will not receive further notifications about this event</li>
+                    </ul>
+                </div>
+
+                <!-- Cancellation Form -->
+                <form method="post" id="cancellationForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="cancellation_reason" class="form-label">
+                            <i class="fas fa-comment"></i> Reason for Cancellation (Optional)
+                        </label>
+                        <textarea class="form-control" id="cancellation_reason" name="cancellation_reason" 
+                                  rows="3" placeholder="Please let us know why you're cancelling (optional)"></textarea>
+                        <small class="form-text text-muted">
+                            This helps us improve our events and services.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirm_cancellation" required>
+                            <label class="form-check-label" for="confirm_cancellation">
+                                I understand that cancelling my registration for "{{ event.name }}" is permanent 
+                                and I will need to re-register if I change my mind.
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Alumni Info -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-user"></i> Cancelling registration for:</h6>
+                        <p class="mb-0">
+                            <strong>{{ alumni.user.get_full_name }}</strong><br>
+                            {{ alumni.course }} - Class of {{ alumni.graduation_year }}<br>
+                            {{ alumni.user.email }}
+                        </p>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end">
+                        <a href="{% url 'alumni:events' %}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-arrow-left"></i> Keep Registration
+                        </a>
+                        <button type="submit" class="btn btn-danger" id="cancelBtn" disabled>
+                            <i class="fas fa-times"></i> Cancel Registration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Additional Information Card -->
+        <div class="card shadow mt-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="fas fa-lightbulb"></i> Need Help?
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Having technical issues?</h6>
+                        <p class="text-muted">
+                            If you're experiencing problems with the system, please contact our support team.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Questions about the event?</h6>
+                        <p class="text-muted">
+                            For event-specific questions, please contact the event organizer directly.
+                        </p>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <a href="mailto:support@smartaccess.edu" class="btn btn-outline-info btn-sm me-2">
+                        <i class="fas fa-envelope"></i> Contact Support
+                    </a>
+                    <a href="{% url 'alumni:directory' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-users"></i> Browse Alumni Directory
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('cancellationForm');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const confirmCheckbox = document.getElementById('confirm_cancellation');
+
+    // Enable/disable cancel button based on confirmation checkbox
+    function updateCancelButton() {
+        cancelBtn.disabled = !confirmCheckbox.checked;
+        if (confirmCheckbox.checked) {
+            cancelBtn.classList.remove('btn-secondary');
+            cancelBtn.classList.add('btn-danger');
+        } else {
+            cancelBtn.classList.remove('btn-danger');
+            cancelBtn.classList.add('btn-secondary');
+        }
+    }
+
+    confirmCheckbox.addEventListener('change', updateCancelButton);
+    updateCancelButton(); // Initial state
+
+    // Form submission confirmation
+    form.addEventListener('submit', function(e) {
+        const eventName = '{{ event.name|escapejs }}';
+        if (!confirm(`Are you absolutely sure you want to cancel your registration for "${eventName}"?\n\nThis action cannot be undone.`)) {
+            e.preventDefault();
+        } else {
+            // Show loading state
+            cancelBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling...';
+            cancelBtn.disabled = true;
+        }
+    });
+});
+</script>
+
+<style>
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.alert-warning {
+    border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+    border-left: 4px solid #17a2b8;
+}
+
+.card-header.bg-warning {
+    background-color: #fff3cd !important;
+    border-bottom: 1px solid #ffeaa7;
+}
+</style>
+{% endblock %}

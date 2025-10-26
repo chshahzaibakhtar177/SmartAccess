@@ -127,7 +127,11 @@ def student_detail(request, student_id):
 def update_photo(request):
     """Update student photo view - migrated from legacy student app"""
     if request.method == 'POST':
-        form = StudentPhotoForm(request.POST, request.FILES, instance=request.user.student_profile)
+        try:
+            form = StudentPhotoForm(request.POST, request.FILES, instance=request.user.student_profile)
+        except Student.DoesNotExist:
+            messages.error(request, "Student profile not found. Please contact administrator.")
+            return redirect('login')
         if form.is_valid():
             form.save()
             messages.success(request, 'Photo updated successfully!')

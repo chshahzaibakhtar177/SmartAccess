@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Alumni Profile - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">Alumni Profile</h1>
+        <p class="text-muted">{{ alumni.user.get_full_name }}'s profile information</p>
+    </div>
+    <div>
+        <a href="{% url 'alumni:dashboard' %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        <a href="{% url 'alumni:edit_profile' %}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Edit Profile
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Profile Photo and Basic Info -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-body text-center">
+                {% if alumni.profile_photo %}
+                    <img src="{{ alumni.profile_photo.url }}" alt="Profile Photo" 
+                         class="rounded-circle mb-3" width="150" height="150" style="object-fit: cover;">
+                {% else %}
+                    <div class="bg-secondary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                         style="width: 150px; height: 150px;">
+                        <i class="fas fa-user fa-4x text-white"></i>
+                    </div>
+                {% endif %}
+                <h4 class="mb-2">{{ alumni.user.get_full_name }}</h4>
+                <p class="text-muted mb-1">Student ID: {{ alumni.student_id }}</p>
+                <p class="text-primary mb-0">Class of {{ alumni.graduation_year }}</p>
+                {% if alumni.graduation_date %}
+                    <small class="text-muted">Graduated: {{ alumni.graduation_date|date:"F d, Y" }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-bar"></i> Quick Stats
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-12 mb-2">
+                        <h5 class="text-primary">{{ alumni.graduation_year }}</h5>
+                        <small class="text-muted">Graduation Year</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Information -->
+    <div class="col-lg-8">
+        <!-- Personal Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-user"></i> Personal Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">First Name</label>
+                        <p class="form-control-static">{{ alumni.user.first_name }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Last Name</label>
+                        <p class="form-control-static">{{ alumni.user.last_name }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Email Address</label>
+                        <p class="form-control-static">{{ alumni.user.email }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Contact Number</label>
+                        <p class="form-control-static">{{ alumni.contact_number|default:"Not provided" }}</p>
+                    </div>
+                </div>
+                {% if alumni.address %}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="form-label text-muted">Address</label>
+                        <p class="form-control-static">{{ alumni.address }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Academic Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-graduation-cap"></i> Academic Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Course/Program</label>
+                        <p class="form-control-static">{{ alumni.course }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Department</label>
+                        <p class="form-control-static">{{ alumni.department }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Student ID</label>
+                        <p class="form-control-static">{{ alumni.student_id }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Graduation Year</label>
+                        <p class="form-control-static">{{ alumni.graduation_year }}</p>
+                    </div>
+                    {% if alumni.graduation_date %}
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Graduation Date</label>
+                        <p class="form-control-static">{{ alumni.graduation_date|date:"F d, Y" }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Professional Information -->
+        {% if alumni.current_position or alumni.company %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-briefcase"></i> Professional Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if alumni.current_position %}
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Current Position</label>
+                        <p class="form-control-static">{{ alumni.current_position }}</p>
+                    </div>
+                    {% endif %}
+                    {% if alumni.company %}
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Company</label>
+                        <p class="form-control-static">{{ alumni.company }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Social Information -->
+        {% if alumni.linkedin_profile %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fab fa-linkedin"></i> Social Links
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="form-label text-muted">LinkedIn Profile</label>
+                        <p class="form-control-static">
+                            <a href="{{ alumni.linkedin_profile }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="fab fa-linkedin"></i> View LinkedIn Profile
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.form-control-static {
+    padding: 0.375rem 0;
+    margin-bottom: 0;
+    min-height: calc(1.5em + 0.75rem + 2px);
+    font-weight: 500;
+}
+</style>
+{% endblock %}

@@ -18,7 +18,11 @@ from authentication.decorators import student_required, teacher_required
 @student_required
 def student_dashboard(request):
     """Student dashboard with attendance, fines, and recent activities"""
-    student = request.user.student_profile
+    try:
+        student = request.user.student_profile
+    except Student.DoesNotExist:
+        messages.error(request, "Student profile not found. Please contact administrator.")
+        return redirect('login')
     today = timezone.now().date()
     last_30_days = today - timedelta(days=30)
     

@@ -16,4 +16,10 @@ urlpatterns = [
     path('student-dashboard/', views.student_library_dashboard, name='student_library_dashboard'),
     path('api/nfc-checkout/', views.book_nfc_checkout_api, name='book_nfc_checkout_api'),
     path('reports/overdue/', views.overdue_books_report, name='overdue_books_report'),
+    
+    # Book Category Management URLs
+    path('categories/', views.category_list, name='library_category_list'),
+    path('categories/create/', views.category_create, name='library_category_create'),
+    path('categories/<int:pk>/edit/', views.category_edit, name='library_category_edit'),
+    path('categories/<int:pk>/delete/', views.category_delete, name='library_category_delete'),
 ]

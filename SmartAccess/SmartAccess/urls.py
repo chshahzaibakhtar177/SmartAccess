@@ -60,6 +60,9 @@ urlpatterns = [
     # Transportation management URLs (modular)
     path('transportation/', include('transportation.urls')),
     
+    # Alumni management URLs (modular)
+    path('alumni/', include('alumni.urls')),
+    
     # Dashboard URLs (modular)
     path('', include('dashboards.urls')),
     

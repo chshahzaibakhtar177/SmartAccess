@@ -8,9 +8,14 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-calendar-alt me-3"></i>Events</h2>
         {% if user.groups.all.0.name == 'Teachers' or user.is_superuser %}
-        <a href="{% url 'create_event' %}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Create Event
-        </a>
+        <div class="btn-group" role="group">
+            <a href="{% url 'category_list' %}" class="btn btn-outline-primary">
+                <i class="fas fa-tags me-2"></i>Manage Categories
+            </a>
+            <a href="{% url 'create_event' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Event
+            </a>
+        </div>
         {% endif %}
     </div>
 

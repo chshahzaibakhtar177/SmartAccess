@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Alumni Profile - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">Edit Alumni Profile</h1>
+        <p class="text-muted">Update your profile information</p>
+    </div>
+    <div>
+        <a href="{% url 'alumni:profile' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-times"></i> Cancel
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-edit"></i> Profile Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="profileForm">
+                    {% csrf_token %}
+                    
+                    <!-- Profile Photo Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-12 text-center">
+                            <div class="mb-3">
+                                {% if alumni.profile_photo %}
+                                    <img id="profile-preview" src="{{ alumni.profile_photo.url }}" 
+                                         alt="Profile Photo" class="rounded-circle" 
+                                         width="120" height="120" style="object-fit: cover;">
+                                {% else %}
+                                    <div id="profile-preview" class="bg-secondary rounded-circle mx-auto d-flex align-items-center justify-content-center" 
+                                         style="width: 120px; height: 120px;">
+                                        <i class="fas fa-user fa-3x text-white"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label for="{{ form.profile_photo.id_for_label }}" class="form-label">Profile Photo</label>
+                                {{ form.profile_photo }}
+                                {% if form.profile_photo.errors %}
+                                    <div class="text-danger mt-1">
+                                        {% for error in form.profile_photo.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">Upload a square image for best results (JPG, PNG, max 5MB)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Personal Information -->
+                    <h5 class="mb-3">Personal Information</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.contact_number.id_for_label }}" class="form-label">Contact Number</label>
+                            {{ form.contact_number }}
+                            {% if form.contact_number.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.contact_number.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.linkedin_profile.id_for_label }}" class="form-label">LinkedIn Profile</label>
+                            {{ form.linkedin_profile }}
+                            {% if form.linkedin_profile.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.linkedin_profile.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Enter your full LinkedIn URL (e.g., https://linkedin.com/in/yourname)</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label for="{{ form.address.id_for_label }}" class="form-label">Address</label>
+                            {{ form.address }}
+                            {% if form.address.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.address.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Professional Information -->
+                    <h5 class="mb-3">Professional Information</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.current_position.id_for_label }}" class="form-label">Current Position</label>
+                            {{ form.current_position }}
+                            {% if form.current_position.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.current_position.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.company.id_for_label }}" class="form-label">Company</label>
+                            {{ form.company }}
+                            {% if form.company.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.company.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Academic Information (Read-only display) -->
+                    <h5 class="mb-3">Academic Information <small class="text-muted">(Read-only)</small></h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Course/Program</label>
+                            <p class="form-control-plaintext">{{ alumni.course }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Department</label>
+                            <p class="form-control-plaintext">{{ alumni.department }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Student ID</label>
+                            <p class="form-control-plaintext">{{ alumni.student_id }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Graduation Year</label>
+                            <p class="form-control-plaintext">{{ alumni.graduation_year }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-end pt-3">
+                        <a href="{% url 'alumni:profile' %}" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Profile photo preview
+    const photoInput = document.getElementById('{{ form.profile_photo.id_for_label }}');
+    const preview = document.getElementById('profile-preview');
+    
+    if (photoInput) {
+        photoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (preview.tagName === 'IMG') {
+                        preview.src = e.target.result;
+                    } else {
+                        // Replace div with img
+                        const newImg = document.createElement('img');
+                        newImg.id = 'profile-preview';
+                        newImg.src = e.target.result;
+                        newImg.alt = 'Profile Photo';
+                        newImg.className = 'rounded-circle';
+                        newImg.style.width = '120px';
+                        newImg.style.height = '120px';
+                        newImg.style.objectFit = 'cover';
+                        preview.parentNode.replaceChild(newImg, preview);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Form validation
+    const form = document.getElementById('profileForm');
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // Add any custom validation here
+        
+        if (!isValid) {
+            e.preventDefault();
+        }
+    });
+
+    // Add Bootstrap classes to form elements
+    const formElements = document.querySelectorAll('input, textarea, select');
+    formElements.forEach(element => {
+        element.classList.add('form-control');
+    });
+
+    // Special handling for file input
+    if (photoInput) {
+        photoInput.classList.remove('form-control');
+        photoInput.classList.add('form-control');
+        photoInput.setAttribute('accept', 'image/jpeg,image/png,image/jpg');
+    }
+});
+</script>
+
+<style>
+.form-control-plaintext {
+    padding: 0.375rem 0;
+    margin-bottom: 0;
+    font-weight: 500;
+    color: #495057;
+}
+</style>
+{% endblock %}
