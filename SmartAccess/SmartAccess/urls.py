@@ -29,22 +29,26 @@ def home_redirect(request):
 urlpatterns = [
     # path('admin/', admin.site.urls),
     path('', home_redirect, name='home_redirect'),
-    path('accounts/', include('django.contrib.auth.urls')),
-    path('dashboard_redirect/', dashboard_redirect, name='dashboard_redirect'),
-
     
+    # Authentication URLs (modular)
+    path('', include('authentication.urls')),
+    
+    # Legacy URLs (maintain backward compatibility) - All existing functionality
     path('register_student/', register_student, name='register_student'),
     path('edit_student/<int:student_id>/', edit_student, name='edit_student'),
     path('delete_student/<int:student_id>/', delete_student, name='delete_student'),
-    path('student/change_password/', change_password_manual, name='change_password_manual'),
-
     
+    # Fine Management URLs
     path('fines/add/', add_fine, name='add_fine'),
     path('fines/edit/<int:fine_id>/', edit_fine, name='edit_fine'),
     path('fines/delete/<int:fine_id>/', delete_fine, name='delete_fine'),
     path('fine/toggle/<int:fine_id>/', toggle_fine_payment, name='toggle_fine_payment'),
+    
+    # API URLs
     path('api/student-search/', student_search_api, name='student_search_api'),
-    path('api/nfc-scan/', nfc_scan_api, name='nfc_scan_api'),  # New NFC API endpoint
+    path('api/nfc-scan/', nfc_scan_api, name='nfc_scan_api'),
+    path('api/event-nfc-checkin/', event_nfc_checkin_api, name='event_nfc_checkin_api'),
+    path('api/library/nfc-checkout/', book_nfc_checkout_api, name='book_nfc_checkout_api'),
     
     # Card assignment URLs
     path('assign-card/<int:student_id>/', assign_card_page, name='assign_card_page'),
@@ -58,7 +62,6 @@ urlpatterns = [
     path('events/<int:event_id>/edit/', edit_event, name='edit_event'),
     path('events/<int:event_id>/register/', register_for_event, name='register_for_event'),
     path('events/<int:event_id>/cancel-registration/', cancel_event_registration, name='cancel_event_registration'),
-    path('api/event-nfc-checkin/', event_nfc_checkin_api, name='event_nfc_checkin_api'),
     
     # Library Management URLs
     path('library/', library_dashboard, name='library_dashboard'),
@@ -73,32 +76,25 @@ urlpatterns = [
     path('library/reservations/<int:reservation_id>/cancel/', cancel_reservation, name='cancel_reservation'),
     path('library/student/', student_library_dashboard, name='student_library_dashboard'),
     path('library/overdue-report/', overdue_books_report, name='overdue_books_report'),
-    path('api/library/nfc-checkout/', book_nfc_checkout_api, name='book_nfc_checkout_api'),
     
+    # Dashboard URLs
     path('student/dashboard/', student_dashboard, name='student_dashboard'),
     path('teacher/dashboard/', teacher_dashboard, name='teacher_dashboard'),
     path('admin/dashboard/', admin_dashboard, name='admin_dashboard'),
-
-
+    
+    # Attendance & Logs URLs
     path('simulate-scan/', simulate_card_scan, name='simulate_card_scan'),
     path('view_logs/', view_logs, name='view_logs'),
-    path('student/<int:student_id>/', student_detail, name='student_detail'),
-
-    
-    path('admin/add-teacher/', add_teacher, name='add_teacher'),
-    
     path('export_logs/csv/', export_logs_csv, name='export_logs_csv'),
+    path('attendance/analytics/', attendance_analytics, name='attendance_analytics'),
     
+    # Profile & Photo URLs
+    path('student/<int:student_id>/', student_detail, name='student_detail'),
     path('student/update-photo/', update_photo, name='update_photo'),
     path('teacher/update-photo/', update_teacher_photo, name='update_teacher_photo'),
     
-    path('profile/', profile_view, name='profile'),
-
-    path('password-reset/', StudentPasswordResetView.as_view(), name='password_reset'),
-    path('reset/<uidb64>/<token>/', StudentPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
-    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
-    path('attendance/analytics/', attendance_analytics, name='attendance_analytics'),
+    # Teacher Management URLs
+    path('admin/add-teacher/', add_teacher, name='add_teacher'),
 ]
 
 

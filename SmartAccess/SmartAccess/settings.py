@@ -37,6 +37,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Core apps
+    'authentication',
+    'dashboards',
+    
+    # Feature apps
+    'students',
+    'teachers',
+    'attendance',
+    'fines',
+    'events',
+    'library',
+    
+    # Legacy app (to be phased out)
     'student',
 ]
 
