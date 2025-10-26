@@ -116,6 +116,25 @@
                     {% endfor %}
                 </div>
             </div>
+
+            <!-- Transportation Card -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">My Transportation</h5>
+                    <a href="{% url 'transportation:transport_logs' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'transportation:transport_logs' %}" class="btn btn-outline-success">
+                            <i class="fas fa-clipboard-list me-2"></i>My Transport History
+                        </a>
+                        <small class="text-muted text-center mt-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            View your bus boarding and travel history
+                        </small>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

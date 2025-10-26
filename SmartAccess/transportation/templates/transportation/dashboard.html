@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transportation Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-bus me-2"></i>Transportation Dashboard
+                </h1>
+                <div class="btn-group">
+                    <a href="{% url 'transportation:bus_management' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-bus me-1"></i>Manage Buses
+                    </a>
+                    <a href="{% url 'transportation:route_management' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-route me-1"></i>Manage Routes
+                    </a>
+                    <a href="{% url 'transportation:analytics' %}" class="btn btn-outline-info">
+                        <i class="fas fa-chart-bar me-1"></i>Analytics
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-1">Active Buses</h6>
+                            <h2 class="mb-0">{{ total_buses }}</h2>
+                        </div>
+                        <div class="text-primary-50">
+                            <i class="fas fa-bus fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-1">Active Routes</h6>
+                            <h2 class="mb-0">{{ total_routes }}</h2>
+                        </div>
+                        <div class="text-success-50">
+                            <i class="fas fa-route fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-1">Today's Rides</h6>
+                            <h2 class="mb-0">{{ today_logs }}</h2>
+                        </div>
+                        <div class="text-info-50">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-uppercase mb-1">Current Date</h6>
+                            <h5 class="mb-0">{{ today|date:"M d, Y" }}</h5>
+                        </div>
+                        <div class="text-warning-50">
+                            <i class="fas fa-calendar fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Transport Logs -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>Recent Transport Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_logs %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Bus</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                        <th>Location</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in recent_logs %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge badge-sm bg-{{ log.user_type|yesno:'primary,success,info' }} me-2">
+                                                    {{ log.get_user_type_display }}
+                                                </span>
+                                                <span>{{ log.user.get_full_name|default:log.user.username }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold">{{ log.bus.bus_number }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ log.boarding_status|yesno:'success,danger,warning' }}">
+                                                <i class="fas fa-{{ log.boarding_status|yesno:'sign-in-alt,sign-out-alt,exclamation' }} me-1"></i>
+                                                {{ log.get_boarding_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ log.boarding_time|timesince }} ago</small>
+                                        </td>
+                                        <td>
+                                            <small>{{ log.boarding_location }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'transportation:transport_logs' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-eye me-1"></i>View All Logs
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No transport activity recorded yet today.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Bus Utilization & Quick Stats -->
+        <div class="col-lg-4">
+            <!-- Bus Utilization -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Bus Utilization Today
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if bus_utilization %}
+                        {% for bus in bus_utilization %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <span class="fw-bold">{{ bus.bus_number }}</span>
+                                <br>
+                                <small class="text-muted">{{ bus.route }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary">{{ bus.today_usage }} rides</span>
+                                <br>
+                                <small class="text-muted">{{ bus.capacity }} capacity</small>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr class="my-2">{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-bus fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No bus usage data today</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Popular Routes -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-route me-2"></i>Popular Routes Today
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if popular_routes %}
+                        {% for route in popular_routes %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <span class="fw-bold">{{ route.route_name }}</span>
+                                <br>
+                                <small class="text-muted">{{ route.start_location }} → {{ route.end_location }}</small>
+                            </div>
+                            <span class="badge bg-success">{{ route.usage_count }} rides</span>
+                        </div>
+                        {% if not forloop.last %}<hr class="my-2">{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-route fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No route usage data today</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-sm {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.text-primary-50 {
+    opacity: 0.5;
+}
+
+.text-success-50 {
+    opacity: 0.5;
+}
+
+.text-info-50 {
+    opacity: 0.5;
+}
+
+.text-warning-50 {
+    opacity: 0.5;
+}
+</style>
+{% endblock %}

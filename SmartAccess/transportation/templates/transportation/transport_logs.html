@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transport Logs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-clipboard-list me-2"></i>Transport Activity Logs
+                </h1>
+                <a href="{% url 'transportation:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-search me-2"></i>Search & Filter Logs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="search" 
+                                   name="search" 
+                                   value="{{ search_query }}"
+                                   placeholder="Name, username, bus number...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_from" class="form-label">From Date</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="date_from" 
+                                   name="date_from" 
+                                   value="{{ date_from }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_to" class="form-label">To Date</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="date_to" 
+                                   name="date_to" 
+                                   value="{{ date_to }}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-1"></i>Filter
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% if search_query or date_from or date_to %}
+                        <div class="mt-3">
+                            <a href="{% url 'transportation:transport_logs' %}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Clear Filters
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transport Logs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>Transport Activity History
+                    </h5>
+                    {% if logs %}
+                        <span class="badge bg-info">{{ logs.paginator.count }} total records</span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if logs %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-dark sticky-top">
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Bus</th>
+                                        <th>Route</th>
+                                        <th>Status</th>
+                                        <th>Location</th>
+                                        <th>Boarding Time</th>
+                                        <th>Travel Duration</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in logs %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-2">
+                                                    {% if log.user_type == 'student' %}
+                                                        <span class="badge bg-primary">
+                                                            <i class="fas fa-user-graduate me-1"></i>Student
+                                                        </span>
+                                                    {% elif log.user_type == 'teacher' %}
+                                                        <span class="badge bg-success">
+                                                            <i class="fas fa-chalkboard-teacher me-1"></i>Teacher
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-user me-1"></i>Staff
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
+                                                    <small class="text-muted">{{ log.user.username }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-primary">{{ log.bus.bus_number }}</span>
+                                            <br>
+                                            <small class="text-muted">{{ log.bus.driver_name }}</small>
+                                        </td>
+                                        <td>
+                                            {% if log.route %}
+                                                <span>{{ log.route.route_name }}</span>
+                                                <br>
+                                                <small class="text-muted">{{ log.route.start_location }} → {{ log.route.end_location }}</small>
+                                            {% else %}
+                                                <span class="text-muted">No route assigned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if log.boarding_status == 'boarded' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-sign-in-alt me-1"></i>Boarded
+                                                </span>
+                                            {% elif log.boarding_status == 'alighted' %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-sign-out-alt me-1"></i>Alighted
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-exclamation me-1"></i>No Show
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ log.boarding_location }}</small>
+                                        </td>
+                                        <td>
+                                            <div>{{ log.boarding_time|date:"M d, Y" }}</div>
+                                            <small class="text-muted">{{ log.boarding_time|time:"g:i A" }}</small>
+                                        </td>
+                                        <td>
+                                            {% if log.get_travel_duration %}
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    {% with duration=log.get_travel_duration %}
+                                                        {% if duration.seconds >= 3600 %}
+                                                            {{ duration.seconds|floatformat:0|div:3600 }}h {{ duration.seconds|floatformat:0|mod:3600|div:60 }}m
+                                                        {% else %}
+                                                            {{ duration.seconds|floatformat:0|div:60 }}m
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </span>
+                                            {% elif log.boarding_status == 'boarded' %}
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-bus me-1"></i>On board
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-primary"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#logModal{{ log.id }}"
+                                                    title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Log Detail Modal -->
+                                    <div class="modal fade" id="logModal{{ log.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Transport Log Details</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">User:</div>
+                                                        <div class="col-sm-8">
+                                                            <span class="badge bg-{{ log.user_type|yesno:'primary,success,info' }}">
+                                                                {{ log.get_user_type_display }}
+                                                            </span>
+                                                            {{ log.user.get_full_name|default:log.user.username }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">NFC Card:</div>
+                                                        <div class="col-sm-8">{{ log.nfc_uid }}</div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Bus:</div>
+                                                        <div class="col-sm-8">{{ log.bus.bus_number }} ({{ log.bus.driver_name }})</div>
+                                                    </div>
+                                                    {% if log.route %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Route:</div>
+                                                        <div class="col-sm-8">{{ log.route.route_name }}</div>
+                                                    </div>
+                                                    {% endif %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Status:</div>
+                                                        <div class="col-sm-8">
+                                                            <span class="badge bg-{{ log.boarding_status|yesno:'success,warning,danger' }}">
+                                                                {{ log.get_boarding_status_display }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Boarding Location:</div>
+                                                        <div class="col-sm-8">{{ log.boarding_location }}</div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Boarding Time:</div>
+                                                        <div class="col-sm-8">{{ log.boarding_time|date:"F d, Y g:i A" }}</div>
+                                                    </div>
+                                                    {% if log.alighting_time %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Alighting Time:</div>
+                                                        <div class="col-sm-8">{{ log.alighting_time|date:"F d, Y g:i A" }}</div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Travel Duration:</div>
+                                                        <div class="col-sm-8">{{ log.get_travel_duration }}</div>
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if log.notes %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-sm-4 fw-bold">Notes:</div>
+                                                        <div class="col-sm-8">{{ log.notes }}</div>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if logs.has_other_pages %}
+                            <div class="card-footer bg-light">
+                                <nav>
+                                    <ul class="pagination justify-content-center mb-0">
+                                        {% if logs.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ logs.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Previous</a>
+                                            </li>
+                                        {% endif %}
+                                        
+                                        {% for num in logs.paginator.page_range %}
+                                            {% if logs.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ num }}</span>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                        
+                                        {% if logs.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ logs.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Next</a>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            </div>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No transport logs found</h5>
+                            {% if search_query or date_from or date_to %}
+                                <p class="text-muted">Try adjusting your search criteria.</p>
+                                <a href="{% url 'transportation:transport_logs' %}" class="btn btn-outline-primary">
+                                    <i class="fas fa-times me-1"></i>Clear Filters
+                                </a>
+                            {% else %}
+                                <p class="text-muted">No transport activity has been recorded yet.</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table th.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+</style>
+{% endblock %}

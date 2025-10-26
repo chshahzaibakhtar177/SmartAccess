@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add New Bus{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-bus me-2"></i>Add New Bus
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Messages -->
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="bus_number" class="form-label fw-bold">
+                                        Bus Number <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="bus_number" 
+                                           name="bus_number" 
+                                           required
+                                           placeholder="e.g., BUS-001">
+                                    <div class="invalid-feedback">
+                                        Please provide a valid bus number.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="capacity" class="form-label fw-bold">
+                                        Seating Capacity <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="capacity" 
+                                           name="capacity" 
+                                           min="1" 
+                                           max="100"
+                                           required
+                                           placeholder="e.g., 45">
+                                    <div class="invalid-feedback">
+                                        Please provide a valid capacity (1-100).
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="driver_name" class="form-label fw-bold">
+                                        Driver Name <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="driver_name" 
+                                           name="driver_name" 
+                                           required
+                                           placeholder="Driver's full name">
+                                    <div class="invalid-feedback">
+                                        Please provide the driver's name.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="driver_contact" class="form-label fw-bold">
+                                        Driver Contact <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="tel" 
+                                           class="form-control" 
+                                           id="driver_contact" 
+                                           name="driver_contact" 
+                                           required
+                                           placeholder="e.g., +92 300 1234567">
+                                    <div class="invalid-feedback">
+                                        Please provide a valid contact number.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="route" class="form-label fw-bold">
+                                Bus Route <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" 
+                                      id="route" 
+                                      name="route" 
+                                      rows="3"
+                                      required
+                                      placeholder="Describe the bus route (e.g., University → City Center → Mall → University)"></textarea>
+                            <div class="invalid-feedback">
+                                Please provide the bus route information.
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Provide a clear description of the bus route including major stops.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                <label class="form-check-label fw-bold" for="is_active">
+                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                    Set bus as active (ready for service)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{% url 'transportation:bus_management' %}" 
+                                       class="btn btn-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i>Add Bus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-question-circle me-2"></i>Bus Registration Guidelines
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Bus Number Format:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-1"></i> Use unique identifiers (e.g., BUS-001, UNI-A1)</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Keep it short and memorable</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Use consistent naming scheme</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Driver Information:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-1"></i> Provide full driver name</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Include country code in contact</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Verify driver credentials before adding</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> Bus registration requires admin approval. Once added, the bus will be available for NFC-based boarding tracking.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Format contact number
+document.getElementById('driver_contact').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.startsWith('92')) {
+        value = '+' + value;
+    } else if (value.startsWith('0')) {
+        value = '+92 ' + value.substring(1);
+    }
+    e.target.value = value;
+});
+</script>
+{% endblock %}

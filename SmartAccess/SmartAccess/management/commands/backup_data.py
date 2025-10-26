@@ -1,7 +1,10 @@
 from django.core.management.base import BaseCommand
 from django.core import serializers
 import os
-from models import *
+from students.models import Student
+from attendance.models import EntryLog
+from fines.models import Fine
+from teachers.models import Teacher
 from datetime import datetime
 
 class Command(BaseCommand):
@@ -21,3 +24,5 @@ class Command(BaseCommand):
             with open(filename, 'w') as f:
                 data = serializers.serialize('json', model.objects.all())
                 f.write(data)
+                
+        self.stdout.write(self.style.SUCCESS(f'Backup completed. Files saved to {backup_dir}/'))

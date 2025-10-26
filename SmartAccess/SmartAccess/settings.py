@@ -49,9 +49,7 @@ INSTALLED_APPS = [
     'fines',
     'events',
     'library',
-    
-    # Legacy app (to be phased out)
-    'student',
+    'transportation',
 ]
 
 MIDDLEWARE = [
@@ -69,7 +67,7 @@ ROOT_URLCONF = 'SmartAccess.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

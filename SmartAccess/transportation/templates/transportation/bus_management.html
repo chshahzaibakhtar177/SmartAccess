@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bus Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-bus me-2"></i>Bus Management
+                </h1>
+                <div class="btn-group">
+                    <a href="{% url 'transportation:add_bus' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add New Bus
+                    </a>
+                    <a href="{% url 'transportation:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="row mb-3">
+            <div class="col-12">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Bus List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>Registered Buses
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if buses %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Bus Number</th>
+                                        <th>Driver</th>
+                                        <th>Contact</th>
+                                        <th>Capacity</th>
+                                        <th>Route</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for bus in buses %}
+                                    <tr>
+                                        <td>
+                                            <span class="fw-bold text-primary">{{ bus.bus_number }}</span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <span class="fw-medium">{{ bus.driver_name }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ bus.driver_contact }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ bus.capacity }} seats</span>
+                                        </td>
+                                        <td>
+                                            <small>{{ bus.route|truncatechars:30 }}</small>
+                                        </td>
+                                        <td>
+                                            {% if bus.is_active %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>Active
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times me-1"></i>Inactive
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ bus.created_at|date:"M d, Y" }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-primary" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#busModal{{ bus.id }}">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <a href="#" class="btn btn-outline-warning" title="Edit Bus">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        onclick="toggleBusStatus({{ bus.id }}, {{ bus.is_active|yesno:'true,false' }})" 
+                                                        title="Toggle Status">
+                                                    <i class="fas fa-power-off"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Bus Detail Modal -->
+                                    <div class="modal fade" id="busModal{{ bus.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Bus Details - {{ bus.bus_number }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Bus Number:</div>
+                                                        <div class="col-sm-8">{{ bus.bus_number }}</div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Driver Name:</div>
+                                                        <div class="col-sm-8">{{ bus.driver_name }}</div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Driver Contact:</div>
+                                                        <div class="col-sm-8">{{ bus.driver_contact }}</div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Capacity:</div>
+                                                        <div class="col-sm-8">{{ bus.capacity }} passengers</div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Route:</div>
+                                                        <div class="col-sm-8">{{ bus.route }}</div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Status:</div>
+                                                        <div class="col-sm-8">
+                                                            {% if bus.is_active %}
+                                                                <span class="badge bg-success">Active</span>
+                                                            {% else %}
+                                                                <span class="badge bg-danger">Inactive</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Created:</div>
+                                                        <div class="col-sm-8">{{ bus.created_at|date:"F d, Y g:i A" }}</div>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-sm-4 fw-bold">Last Updated:</div>
+                                                        <div class="col-sm-8">{{ bus.updated_at|date:"F d, Y g:i A" }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if buses.has_other_pages %}
+                            <nav class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if buses.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ buses.previous_page_number }}">Previous</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in buses.paginator.page_range %}
+                                        {% if buses.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if buses.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ buses.next_page_number }}">Next</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-bus fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No buses registered yet</h5>
+                            <p class="text-muted">Click "Add New Bus" to register your first bus.</p>
+                            <a href="{% url 'transportation:add_bus' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Add First Bus
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleBusStatus(busId, currentStatus) {
+    const action = currentStatus ? 'deactivate' : 'activate';
+    if (confirm(`Are you sure you want to ${action} this bus?`)) {
+        // Here you would make an AJAX call to toggle the bus status
+        // For now, we'll just show a placeholder alert
+        alert(`Bus status would be changed. (Feature to be implemented)`);
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Route Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-route me-2"></i>Route Management
+                </h1>
+                <div class="btn-group">
+                    <a href="{% url 'transportation:add_route' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add New Route
+                    </a>
+                    <a href="{% url 'transportation:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="row mb-3">
+            <div class="col-12">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Route List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-map-marked-alt me-2"></i>Transportation Routes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if routes %}
+                        <div class="row">
+                            {% for route in routes %}
+                            <div class="col-lg-6 mb-4">
+                                <div class="card h-100 border-start border-4 border-{{ route.status|yesno:'success,warning,danger' }}">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-bold">{{ route.route_name }}</h6>
+                                        <span class="badge bg-{{ route.status|yesno:'success,warning,danger' }}">
+                                            <i class="fas fa-{{ route.status|yesno:'check,wrench,times' }} me-1"></i>
+                                            {{ route.get_status_display }}
+                                        </span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="route-info">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="fas fa-map-marker-alt text-success me-2"></i>
+                                                <span class="fw-medium">Start:</span>
+                                                <span class="ms-2">{{ route.start_location }}</span>
+                                            </div>
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                                <span class="fw-medium">End:</span>
+                                                <span class="ms-2">{{ route.end_location }}</span>
+                                            </div>
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="fas fa-road text-info me-2"></i>
+                                                <span class="fw-medium">Distance:</span>
+                                                <span class="ms-2">{{ route.total_distance }} km</span>
+                                            </div>
+                                            <div class="d-flex align-items-center mb-3">
+                                                <i class="fas fa-clock text-warning me-2"></i>
+                                                <span class="fw-medium">Est. Time:</span>
+                                                <span class="ms-2">{{ route.estimated_time }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar me-1"></i>
+                                                Added: {{ route.created_at|date:"M d, Y" }}
+                                            </small>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" 
+                                                        class="btn btn-outline-primary"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#routeModal{{ route.id }}"
+                                                        title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn btn-outline-warning"
+                                                        title="Edit Route">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn btn-outline-danger"
+                                                        onclick="toggleRouteStatus({{ route.id }}, '{{ route.status }}')"
+                                                        title="Toggle Status">
+                                                    <i class="fas fa-power-off"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Route Detail Modal -->
+                            <div class="modal fade" id="routeModal{{ route.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">
+                                                <i class="fas fa-route me-2"></i>{{ route.route_name }} - Details
+                                            </h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="fw-bold text-primary mb-3">Route Information</h6>
+                                                    <table class="table table-borderless">
+                                                        <tr>
+                                                            <td class="fw-bold">Route Name:</td>
+                                                            <td>{{ route.route_name }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold">Status:</td>
+                                                            <td>
+                                                                <span class="badge bg-{{ route.status|yesno:'success,warning,danger' }}">
+                                                                    {{ route.get_status_display }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold">Start Location:</td>
+                                                            <td>{{ route.start_location }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold">End Location:</td>
+                                                            <td>{{ route.end_location }}</td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="fw-bold text-primary mb-3">Route Metrics</h6>
+                                                    <table class="table table-borderless">
+                                                        <tr>
+                                                            <td class="fw-bold">Total Distance:</td>
+                                                            <td>{{ route.total_distance }} kilometers</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold">Estimated Time:</td>
+                                                            <td>{{ route.estimated_time }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold">Created:</td>
+                                                            <td>{{ route.created_at|date:"F d, Y g:i A" }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="fw-bold">Last Updated:</td>
+                                                            <td>{{ route.updated_at|date:"F d, Y g:i A" }}</td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mt-4">
+                                                <h6 class="fw-bold text-primary">Route Visualization</h6>
+                                                <div class="route-visual bg-light p-3 rounded">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div class="text-center">
+                                                            <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                                <i class="fas fa-play"></i>
+                                                            </div>
+                                                            <div class="mt-2">
+                                                                <small class="fw-bold">START</small><br>
+                                                                <small>{{ route.start_location }}</small>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="flex-grow-1 mx-3">
+                                                            <div class="d-flex align-items-center">
+                                                                <hr class="flex-grow-1">
+                                                                <span class="mx-3 badge bg-info">{{ route.total_distance }} km</span>
+                                                                <hr class="flex-grow-1">
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="text-center">
+                                                            <div class="bg-danger text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                                <i class="fas fa-stop"></i>
+                                                            </div>
+                                                            <div class="mt-2">
+                                                                <small class="fw-bold">END</small><br>
+                                                                <small>{{ route.end_location }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if routes.has_other_pages %}
+                            <nav class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if routes.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ routes.previous_page_number }}">Previous</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in routes.paginator.page_range %}
+                                        {% if routes.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if routes.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ routes.next_page_number }}">Next</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-route fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No routes defined yet</h5>
+                            <p class="text-muted">Create your first transportation route to get started.</p>
+                            <a href="{% url 'transportation:add_route' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Add First Route
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleRouteStatus(routeId, currentStatus) {
+    const action = currentStatus === 'active' ? 'deactivate' : 'activate';
+    if (confirm(`Are you sure you want to ${action} this route?`)) {
+        // Here you would make an AJAX call to toggle the route status
+        alert(`Route status would be changed. (Feature to be implemented)`);
+    }
+}
+</script>
+
+<style>
+.route-visual hr {
+    border-top: 3px dashed #007bff;
+    margin: 0;
+}
+
+.card .border-start {
+    border-left-width: 4px !important;
+}
+</style>
+{% endblock %}

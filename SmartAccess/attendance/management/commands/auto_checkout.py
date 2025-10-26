@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from student.models import EntryLog, Student
-from datetime import timedelta, time
+from attendance.models import EntryLog
+from datetime import time
 from django.core.mail import send_mail
 
 class Command(BaseCommand):
@@ -31,7 +31,7 @@ class Command(BaseCommand):
                 # Send notification
                 send_mail(
                     'Automatic Checkout Notification',
-                    f'You were automatically checked out at 6:00 PM',
+                    'You were automatically checked out at 6:00 PM',
                     'noreply@smartaccess.com',
                     [log.student.user.email],
                     fail_silently=True,

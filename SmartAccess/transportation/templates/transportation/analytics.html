@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transportation Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 text-primary">
+                    <i class="fas fa-chart-bar me-2"></i>Transportation Analytics
+                </h1>
+                <a href="{% url 'transportation:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-center">
+                <i class="fas fa-calendar-alt me-2"></i>
+                <span>
+                    Analytics Period: <strong>{{ last_week|date:"M d, Y" }} - {{ today|date:"M d, Y" }}</strong>
+                    (Last 7 days for daily stats, Last 30 days for monthly stats)
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Usage Statistics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Daily Usage Trends (Last 7 Days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if daily_stats %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Total Rides</th>
+                                        <th>Unique Users</th>
+                                        <th>Avg. Rides per User</th>
+                                        <th>Day of Week</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in daily_stats %}
+                                    <tr>
+                                        <td class="fw-medium">{{ stat.day|date:"M d, Y" }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ stat.total_rides }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">{{ stat.unique_users }}</span>
+                                        </td>
+                                        <td>
+                                            {% if stat.unique_users > 0 %}
+                                                <span class="badge bg-info">{{ stat.total_rides|div:stat.unique_users|floatformat:1 }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ stat.day|date:"l" }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No usage data available for the selected period.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <!-- Bus Utilization -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bus me-2"></i>Bus Utilization Analysis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if bus_stats %}
+                        <div class="row mb-3">
+                            <div class="col-6 text-center">
+                                <h6 class="text-muted">Monthly Rides</h6>
+                                <p class="text-muted small">Last 30 days</p>
+                            </div>
+                            <div class="col-6 text-center">
+                                <h6 class="text-muted">Weekly Rides</h6>
+                                <p class="text-muted small">Last 7 days</p>
+                            </div>
+                        </div>
+                        {% for bus in bus_stats %}
+                        <div class="mb-3 p-3 border rounded">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold">{{ bus.bus_number }}</h6>
+                                <span class="badge bg-info">{{ bus.capacity }} capacity</span>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="bg-primary text-white rounded p-2">
+                                        <h4 class="mb-0">{{ bus.monthly_rides }}</h4>
+                                        <small>rides</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-success text-white rounded p-2">
+                                        <h4 class="mb-0">{{ bus.weekly_rides }}</h4>
+                                        <small>rides</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>Driver: {{ bus.driver_name }}
+                                </small>
+                            </div>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar bg-primary" 
+                                     role="progressbar" 
+                                     style="width: {% if bus.monthly_rides > 0 %}{{ bus.monthly_rides|div:100|mul:100 }}{% else %}0{% endif %}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-bus fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No bus utilization data available.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Route Popularity -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-route me-2"></i>Route Popularity (Last 30 Days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if route_stats %}
+                        {% for route in route_stats %}
+                        <div class="mb-3 p-3 border rounded">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold">{{ route.route_name }}</h6>
+                                <span class="badge bg-warning text-dark">{{ route.monthly_usage }} rides</span>
+                            </div>
+                            <div class="row text-sm">
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt text-success me-1"></i>
+                                        {{ route.start_location|truncatechars:20 }}
+                                    </small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                        {{ route.end_location|truncatechars:20 }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="mt-2 d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-road me-1"></i>{{ route.total_distance }} km
+                                </small>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>{{ route.estimated_time }}
+                                </small>
+                            </div>
+                            <div class="progress mt-2" style="height: 8px;">
+                                <div class="progress-bar bg-warning" 
+                                     role="progressbar" 
+                                     style="width: {% if route.monthly_usage > 0 %}{{ route.monthly_usage|div:50|mul:100 }}{% else %}0{% endif %}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-route fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No route usage data available.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Peak Hours Analysis -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Peak Hours Analysis (Last 7 Days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if peak_hours %}
+                        <div class="row">
+                            {% for hour in peak_hours %}
+                            <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
+                                <div class="text-center p-3 border rounded">
+                                    <h4 class="text-primary mb-1">
+                                        {% if hour.hour < 10 %}0{% endif %}{{ hour.hour }}:00
+                                    </h4>
+                                    <div class="badge bg-info">{{ hour.rides_count }} rides</div>
+                                    <div class="mt-2">
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar bg-info" 
+                                                 role="progressbar" 
+                                                 style="width: {{ hour.rides_count|div:10|mul:100 }}%"></div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        {% if hour.hour >= 6 and hour.hour < 12 %}
+                                            Morning
+                                        {% elif hour.hour >= 12 and hour.hour < 17 %}
+                                            Afternoon
+                                        {% elif hour.hour >= 17 and hour.hour < 21 %}
+                                            Evening
+                                        {% else %}
+                                            Night
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="alert alert-light">
+                                <h6 class="fw-bold text-info">
+                                    <i class="fas fa-lightbulb me-2"></i>Peak Hour Insights
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <strong>Busiest Hour:</strong> 
+                                        {% with busiest=peak_hours|first %}
+                                            {% if busiest.hour < 10 %}0{% endif %}{{ busiest.hour }}:00 ({{ busiest.rides_count }} rides)
+                                        {% endwith %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Total Active Hours:</strong> {{ peak_hours|length }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Avg. Rides/Hour:</strong> 
+                                        {% with total=peak_hours|length %}
+                                            {% if total > 0 %}
+                                                {{ peak_hours|length|div:total|floatformat:1 }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No peak hour data available for analysis.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ bus_stats|length }}</h3>
+                    <p class="mb-0">Active Buses</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-success text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ route_stats|length }}</h3>
+                    <p class="mb-0">Active Routes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-info text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">
+                        {% with total=daily_stats %}
+                            {% if total %}{{ total|length }}{% else %}0{% endif %}
+                        {% endwith %}
+                    </h3>
+                    <p class="mb-0">Days Tracked</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-warning text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ peak_hours|length }}</h3>
+                    <p class="mb-0">Active Hours</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(45deg, #28a745, #1e7e34);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(45deg, #17a2b8, #117a8b);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(45deg, #ffc107, #e0a800);
+}
+</style>
+{% endblock %}

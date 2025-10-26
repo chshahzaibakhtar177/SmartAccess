@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add New Route{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-route me-2"></i>Add New Transportation Route
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Messages -->
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="route_name" class="form-label fw-bold">
+                                Route Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="route_name" 
+                                   name="route_name" 
+                                   required
+                                   placeholder="e.g., University Campus Route, City Center Express">
+                            <div class="invalid-feedback">
+                                Please provide a unique route name.
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="start_location" class="form-label fw-bold">
+                                        <i class="fas fa-map-marker-alt text-success me-1"></i>
+                                        Start Location <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="start_location" 
+                                           name="start_location" 
+                                           required
+                                           placeholder="e.g., University Main Gate">
+                                    <div class="invalid-feedback">
+                                        Please provide the starting location.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="end_location" class="form-label fw-bold">
+                                        <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                        End Location <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="end_location" 
+                                           name="end_location" 
+                                           required
+                                           placeholder="e.g., City Central Mall">
+                                    <div class="invalid-feedback">
+                                        Please provide the ending location.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="total_distance" class="form-label fw-bold">
+                                        <i class="fas fa-road text-info me-1"></i>
+                                        Total Distance (km) <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="total_distance" 
+                                           name="total_distance" 
+                                           step="0.1"
+                                           min="0.1"
+                                           max="1000"
+                                           required
+                                           placeholder="e.g., 15.5">
+                                    <div class="invalid-feedback">
+                                        Please provide a valid distance.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="estimated_hours" class="form-label fw-bold">
+                                        <i class="fas fa-clock text-warning me-1"></i>
+                                        Estimated Hours
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="estimated_hours" 
+                                           name="estimated_hours" 
+                                           min="0"
+                                           max="23"
+                                           placeholder="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="estimated_minutes" class="form-label fw-bold">
+                                        Estimated Minutes <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="estimated_minutes" 
+                                           name="estimated_minutes" 
+                                           min="1"
+                                           max="59"
+                                           required
+                                           placeholder="30">
+                                    <div class="invalid-feedback">
+                                        Please provide estimated minutes (1-59).
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Route Preview -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-primary">Route Preview</h6>
+                            <div class="bg-light p-3 rounded">
+                                <div class="d-flex align-items-center justify-content-between" id="route-preview">
+                                    <div class="text-center">
+                                        <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-play"></i>
+                                        </div>
+                                        <div class="mt-2">
+                                            <small class="fw-bold">START</small><br>
+                                            <small id="preview-start">Enter start location</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex-grow-1 mx-3">
+                                        <div class="d-flex align-items-center">
+                                            <hr class="flex-grow-1" style="border-top: 3px dashed #007bff;">
+                                            <span class="mx-3 badge bg-info" id="preview-distance">0 km</span>
+                                            <hr class="flex-grow-1" style="border-top: 3px dashed #007bff;">
+                                        </div>
+                                        <div class="text-center mt-2">
+                                            <small class="text-muted" id="preview-time">Est. time: 0 min</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <div class="bg-danger text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-stop"></i>
+                                        </div>
+                                        <div class="mt-2">
+                                            <small class="fw-bold">END</small><br>
+                                            <small id="preview-end">Enter end location</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{% url 'transportation:route_management' %}" 
+                                       class="btn btn-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i>Add Route
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-question-circle me-2"></i>Route Planning Guidelines
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Route Naming:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-1"></i> Use descriptive names</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Include key landmarks</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Keep names concise</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Distance & Time:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-1"></i> Measure actual road distance</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Include traffic considerations</li>
+                                <li><i class="fas fa-check text-success me-1"></i> Add buffer time for stops</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> Routes will be used for bus scheduling and tracking. Accurate distance and time estimates help in better planning and passenger information.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Live route preview updates
+document.getElementById('start_location').addEventListener('input', function(e) {
+    document.getElementById('preview-start').textContent = e.target.value || 'Enter start location';
+});
+
+document.getElementById('end_location').addEventListener('input', function(e) {
+    document.getElementById('preview-end').textContent = e.target.value || 'Enter end location';
+});
+
+document.getElementById('total_distance').addEventListener('input', function(e) {
+    const distance = e.target.value || '0';
+    document.getElementById('preview-distance').textContent = distance + ' km';
+});
+
+function updateTimePreview() {
+    const hours = parseInt(document.getElementById('estimated_hours').value || '0');
+    const minutes = parseInt(document.getElementById('estimated_minutes').value || '0');
+    
+    let timeText = 'Est. time: ';
+    if (hours > 0) {
+        timeText += hours + 'h ';
+    }
+    timeText += minutes + 'min';
+    
+    document.getElementById('preview-time').textContent = timeText;
+}
+
+document.getElementById('estimated_hours').addEventListener('input', updateTimePreview);
+document.getElementById('estimated_minutes').addEventListener('input', updateTimePreview);
+</script>
+{% endblock %}
