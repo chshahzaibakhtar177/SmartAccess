@@ -20,11 +20,13 @@
                     <p class="text-muted mb-0">NFC ID: {{ student.nfc_uid }}</p>
                     <p class="text-muted mb-2">
                         Status: 
-                        {% if student.is_in_university %}
-                            <span class="badge bg-success">In Campus</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Out of Campus</span>
-                        {% endif %}
+                        <span id="campus-status">
+                            {% if student.is_in_university %}
+                                <span class="badge bg-success">In Campus</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Out of Campus</span>
+                            {% endif %}
+                        </span>
                     </p>
                 </div>
             </div>
@@ -37,8 +39,8 @@
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <h6 class="card-title">Total Fines</h6>
-                    <h3>Rs. {{ total_fines }}</h3>
-                    <small>{{ total_fines_count }} fines total</small>
+                    <h3>Rs. <span id="total-fines">{{ total_fines }}</span></h3>
+                    <small><span id="total-fines-count">{{ total_fines_count }}</span> fines total</small>
                 </div>
             </div>
         </div>
@@ -46,8 +48,8 @@
             <div class="card bg-warning text-white">
                 <div class="card-body">
                     <h6 class="card-title">Unpaid Fines</h6>
-                    <h3>{{ total_unpaid }}</h3>
-                    <small>{{ total_paid }} fines paid</small>
+                    <h3 id="total-unpaid">{{ total_unpaid }}</h3>
+                    <small><span id="total-paid">{{ total_paid }}</span> fines paid</small>
                 </div>
             </div>
         </div>
@@ -55,7 +57,7 @@
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <h6 class="card-title">Present Days</h6>
-                    <h3>{{ attendance_stats.present_days }}</h3>
+                    <h3 id="present-days">{{ attendance_stats.present_days }}</h3>
                     <small>Last 30 days</small>
                 </div>
             </div>
@@ -64,7 +66,7 @@
             <div class="card bg-danger text-white">
                 <div class="card-body">
                     <h6 class="card-title">Late Days</h6>
-                    <h3>{{ attendance_stats.late_days }}</h3>
+                    <h3 id="late-days">{{ attendance_stats.late_days }}</h3>
                     <small>Last 30 days</small>
                 </div>
             </div>
@@ -79,7 +81,7 @@
                     <h5 class="card-title mb-0">Recent Activity</h5>
                 </div>
                 <div class="card-body">
-                    <div class="timeline">
+                    <div class="timeline" id="recent-activity-timeline">
                         {% for activity in recent_activities %}
                         <div class="timeline-item">
                             <div class="timeline-marker {% if activity.action == 'in' %}bg-success{% else %}bg-danger{% endif %}"></div>
@@ -102,7 +104,7 @@
                 <div class="card-header">
                     <h5 class="card-title mb-0">Unpaid Fines</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body" id="unpaid-fines-body">
                     {% for fine in unpaid_fines %}
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
@@ -168,10 +170,129 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 <script>
     const image = document.getElementById('profile-image');
-    const cropper = new Cropper(image, {
-        aspectRatio: 1,
-        viewMode: 1,
-        autoCropArea: 1
+    if (image) {
+        const cropper = new Cropper(image, {
+            aspectRatio: 1,
+            viewMode: 1,
+            autoCropArea: 1
+        });
+    }
+    
+    // Real-time dashboard updates using AJAX polling
+    let pollingInterval;
+    let isPageVisible = true;
+    let pollCount = 0;
+    const MAX_POLL_COUNT = 120; // Stop after 120 polls (10 minutes at 5-second intervals)
+    
+    // Track page visibility to pause polling when page is hidden
+    document.addEventListener('visibilitychange', function() {
+        isPageVisible = !document.hidden;
+        if (isPageVisible) {
+            console.log('Page visible - resuming polling');
+            pollCount = 0; // Reset counter when page becomes visible
+            if (!pollingInterval) {
+                startPolling();
+            }
+        } else {
+            console.log('Page hidden - pausing polling');
+            stopPolling();
+        }
     });
+    
+    function updateDashboard() {
+        fetch("{% url 'student_dashboard_data' %}")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Update campus status
+                const statusElement = document.getElementById('campus-status');
+                if (data.stats.is_in_university) {
+                    statusElement.innerHTML = '<span class="badge bg-success">In Campus</span>';
+                } else {
+                    statusElement.innerHTML = '<span class="badge bg-secondary">Out of Campus</span>';
+                }
+                
+                // Update statistics cards
+                document.getElementById('total-fines').textContent = data.stats.total_fines;
+                document.getElementById('total-fines-count').textContent = data.stats.total_fines_count;
+                document.getElementById('total-unpaid').textContent = data.stats.total_unpaid;
+                document.getElementById('total-paid').textContent = data.stats.total_paid;
+                document.getElementById('present-days').textContent = data.stats.present_days;
+                document.getElementById('late-days').textContent = data.stats.late_days;
+                
+                // Update recent activity
+                const timeline = document.getElementById('recent-activity-timeline');
+                if (data.recent_activities.length > 0) {
+                    timeline.innerHTML = data.recent_activities.map(activity => `
+                        <div class="timeline-item">
+                            <div class="timeline-marker ${activity.action === 'Entry' ? 'bg-success' : 'bg-danger'}"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-0">${activity.action}</h6>
+                                <small class="text-muted">${activity.timestamp}</small>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    timeline.innerHTML = '<p class="text-muted">No recent activity</p>';
+                }
+                
+                // Update unpaid fines
+                const finesBody = document.getElementById('unpaid-fines-body');
+                if (data.unpaid_fines.length > 0) {
+                    finesBody.innerHTML = data.unpaid_fines.map(fine => `
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="mb-0">${fine.description}</h6>
+                                <small class="text-muted">Issued: ${fine.date_issued}</small>
+                            </div>
+                            <span class="badge bg-warning">Rs. ${fine.amount}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    finesBody.innerHTML = '<p class="text-muted">No unpaid fines</p>';
+                }
+                
+                // Update last updated timestamp (optional)
+                console.log('Dashboard updated at:', data.last_updated);
+                
+                pollCount++;
+                if (pollCount >= MAX_POLL_COUNT) {
+                    console.log('Maximum poll count reached - stopping auto-refresh');
+                    stopPolling();
+                }
+            })
+            .catch(error => {
+                console.error('Error updating dashboard:', error);
+            });
+    }
+    
+    function startPolling() {
+        // Update immediately on load
+        updateDashboard();
+        
+        // Then update every 8 seconds
+        pollingInterval = setInterval(() => {
+            if (isPageVisible) {
+                updateDashboard();
+            }
+        }, 8000); // 8 seconds
+    }
+    
+    function stopPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+    }
+    
+    // Start polling when page loads
+    document.addEventListener('DOMContentLoaded', startPolling);
+    
+    // Clean up when page unloads
+    window.addEventListener('beforeunload', stopPolling);
 </script>
 {% endblock %}

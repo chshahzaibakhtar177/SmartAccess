@@ -13,7 +13,7 @@
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <h5 class="card-title">Total Students</h5>
-                    <h2>{{ total_students }}</h2>
+                    <h2 id="total-students">{{ total_students }}</h2>
                 </div>
             </div>
         </div>
@@ -21,7 +21,7 @@
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <h5 class="card-title">Currently Inside</h5>
-                    <h2>{{ students_inside }}</h2>
+                    <h2 id="students-inside">{{ students_inside }}</h2>
                 </div>
             </div>
         </div>
@@ -29,7 +29,7 @@
             <div class="card bg-info text-white">
                 <div class="card-body">
                     <h5 class="card-title">Today's Attendance</h5>
-                    <h2>{{ attendance_rate|floatformat:1 }}%</h2>
+                    <h2 id="attendance-rate">{{ attendance_rate|floatformat:1 }}%</h2>
                 </div>
             </div>
         </div>
@@ -37,7 +37,7 @@
             <div class="card bg-warning text-white">
                 <div class="card-body">
                     <h5 class="card-title">Unpaid Fines</h5>
-                    <h2>{{ total_fines }}</h2>
+                    <h2 id="total-fines">{{ total_fines }}</h2>
                 </div>
             </div>
         </div>
@@ -64,7 +64,7 @@
                                     <th>Status</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="today-attendance-tbody">
                                 {% for entry in today_entries %}
                                 <tr>
                                     <td>{{ entry.student.roll_number }}</td>
@@ -101,7 +101,7 @@
                     <h5 class="card-title mb-0">Recent Unpaid Fines</h5>
                     <a href="{% url 'add_fine' %}" class="btn btn-sm btn-outline-primary">Manage Fines</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body" id="unpaid-fines-body">
                     {% for fine in unpaid_fines %}
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
@@ -153,7 +153,7 @@
                 <div class="card-header">
                     <h5 class="card-title mb-0">Recent Activity</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body" id="recent-activity-body">
                     {% for log in recent_logs %}
                     <div class="d-flex align-items-center mb-3">
                         <div class="me-3">
@@ -174,4 +174,141 @@
         </div>
     </div>
 </div>
+
+<script>
+// Real-time dashboard updates using AJAX polling
+let pollingInterval;
+let isPageVisible = true;
+let pollCount = 0;
+const MAX_POLL_COUNT = 120; // Stop after 120 polls (10 minutes at 5-second intervals)
+
+// Track page visibility to pause polling when page is hidden
+document.addEventListener('visibilitychange', function() {
+    isPageVisible = !document.hidden;
+    if (isPageVisible) {
+        console.log('Page visible - resuming polling');
+        pollCount = 0; // Reset counter when page becomes visible
+        if (!pollingInterval) {
+            startPolling();
+        }
+    } else {
+        console.log('Page hidden - pausing polling');
+        stopPolling();
+    }
+});
+
+function updateDashboard() {
+    fetch("{% url 'teacher_dashboard_data' %}")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Update statistics cards
+            document.getElementById('total-students').textContent = data.stats.total_students;
+            document.getElementById('students-inside').textContent = data.stats.students_inside;
+            document.getElementById('attendance-rate').textContent = data.stats.attendance_rate + '%';
+            document.getElementById('total-fines').textContent = data.stats.total_fines;
+            
+            // Update today's attendance table
+            const tbody = document.getElementById('today-attendance-tbody');
+            if (data.today_entries.length > 0) {
+                tbody.innerHTML = data.today_entries.map(entry => `
+                    <tr>
+                        <td>${entry.roll_number}</td>
+                        <td>
+                            <a href="/students/${entry.student_id}/">
+                                ${entry.name}
+                            </a>
+                        </td>
+                        <td>${entry.time}</td>
+                        <td>
+                            ${entry.is_late 
+                                ? '<span class="badge bg-warning">Late</span>' 
+                                : '<span class="badge bg-success">On Time</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No attendance records for today</td></tr>';
+            }
+            
+            // Update recent activity
+            const activityBody = document.getElementById('recent-activity-body');
+            if (data.recent_logs.length > 0) {
+                activityBody.innerHTML = data.recent_logs.map(log => `
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="me-3">
+                            ${log.action === 'in' 
+                                ? '<span class="badge bg-success">IN</span>' 
+                                : '<span class="badge bg-danger">OUT</span>'}
+                        </div>
+                        <div>
+                            <h6 class="mb-0">${log.student_name}</h6>
+                            <small class="text-muted">${log.timestamp}</small>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                activityBody.innerHTML = '<p class="text-muted text-center">No recent activity</p>';
+            }
+            
+            // Update unpaid fines
+            const finesBody = document.getElementById('unpaid-fines-body');
+            if (data.unpaid_fines.length > 0) {
+                finesBody.innerHTML = data.unpaid_fines.map(fine => `
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="mb-0">${fine.student_name}</h6>
+                            <small class="text-muted">${fine.description}</small>
+                        </div>
+                        <span class="badge bg-warning">Rs. ${fine.amount}</span>
+                    </div>
+                `).join('');
+            } else {
+                finesBody.innerHTML = '<p class="text-muted text-center">No unpaid fines</p>';
+            }
+            
+            // Update last updated timestamp (optional)
+            console.log('Dashboard updated at:', data.last_updated);
+            
+            pollCount++;
+            if (pollCount >= MAX_POLL_COUNT) {
+                console.log('Maximum poll count reached - stopping auto-refresh');
+                stopPolling();
+            }
+        })
+        .catch(error => {
+            console.error('Error updating dashboard:', error);
+        });
+}
+
+function startPolling() {
+    // Update immediately on load
+    updateDashboard();
+    
+    // Then update every 5 seconds
+    pollingInterval = setInterval(() => {
+        if (isPageVisible) {
+            updateDashboard();
+        }
+    }, 5000); // 5 seconds
+}
+
+function stopPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
+}
+
+// Start polling when page loads
+document.addEventListener('DOMContentLoaded', startPolling);
+
+// Clean up when page unloads
+window.addEventListener('beforeunload', stopPolling);
+</script>
+
 {% endblock %}
