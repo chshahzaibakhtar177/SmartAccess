@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import update_session_auth_hash, logout
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
 from django.contrib import messages
@@ -101,4 +101,11 @@ class StudentPasswordResetConfirmView(PasswordResetConfirmView):
 
 def home_redirect(request):
     """Redirect home requests to login"""
+    return redirect('login')
+
+
+def logout_view(request):
+    """Logout user and redirect to login page"""
+    logout(request)
+    messages.success(request, 'You have been successfully logged out.')
     return redirect('login')

@@ -1,9 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 # Import from the modular models
 from .models import Fine
 from .forms import FineForm
+from students.models import Student
 
 # Fines management views - migrated from legacy student app
 
@@ -66,3 +70,50 @@ def toggle_fine_payment(request, fine_id):
     fine.is_paid = not fine.is_paid
     fine.save()
     return redirect('add_fine')
+
+
+@csrf_exempt
+def scan_card_for_fine(request):
+    """API endpoint to get student details by scanning NFC card"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            card_id = data.get('card_id')
+            
+            if not card_id:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'No card_id provided'
+                })
+            
+            try:
+                student = Student.objects.get(nfc_uid=card_id)
+                return JsonResponse({
+                    'success': True,
+                    'student_id': student.id,
+                    'student_name': student.name,
+                    'roll_number': student.roll_number,
+                    'course': student.course,
+                    'department': student.department
+                })
+            except Student.DoesNotExist:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Card not recognized. Please assign this card to a student first.'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Invalid JSON data'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False, 
+                'error': str(e)
+            })
+    
+    return JsonResponse({
+        'success': False, 
+        'error': 'Only POST method allowed'
+    })

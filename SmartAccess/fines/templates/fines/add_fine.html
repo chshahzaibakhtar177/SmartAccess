@@ -10,9 +10,37 @@
     {% endif %}
 
     <!-- Add/Edit Fine Form -->
-    <form method="POST" class="mb-4">
+    <form method="POST" class="mb-4" id="fineForm">
         {% csrf_token %}
-        {{ form.as_p }}
+        
+        <!-- Student Selection with Scan Card Option -->
+        <div class="mb-3">
+            <label for="id_student" class="form-label">Student</label>
+            <div class="input-group">
+                {{ form.student }}
+                <button type="button" class="btn btn-info" id="scanCardBtn" data-bs-toggle="modal" data-bs-target="#scanCardModal">
+                    <i class="fas fa-id-card"></i> Scan Card
+                </button>
+            </div>
+            <small class="text-muted">Search by name or scan student's NFC card</small>
+        </div>
+        
+        <!-- Other Form Fields -->
+        <div class="mb-3">
+            <label for="id_amount" class="form-label">Amount</label>
+            {{ form.amount }}
+        </div>
+        
+        <div class="mb-3">
+            <label for="id_description" class="form-label">Description</label>
+            {{ form.description }}
+        </div>
+        
+        <div class="mb-3 form-check">
+            {{ form.is_paid }}
+            <label for="id_is_paid" class="form-check-label">Is Paid</label>
+        </div>
+        
         <button type="submit" class="btn btn-primary">
             {% if edit_mode %}Update Fine{% else %}Add Fine{% endif %}
         </button>
@@ -82,7 +110,53 @@
     </table>
 </div>
 
+<!-- Scan Card Modal -->
+<div class="modal fade" id="scanCardModal" tabindex="-1" aria-labelledby="scanCardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scanCardModalLabel">
+                    <i class="fas fa-id-card"></i> Scan Student Card
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="scanStatus" class="text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-id-card fa-4x text-primary"></i>
+                    </div>
+                    <h5>Ready to Scan</h5>
+                    <p class="text-muted">Please place the student's NFC card on the scanner</p>
+                    <div class="spinner-border text-primary mt-3" role="status" style="display: none;" id="scanSpinner">
+                        <span class="visually-hidden">Scanning...</span>
+                    </div>
+                    <div id="scanMessage" class="alert mt-3" style="display: none;"></div>
+                </div>
+                <div id="studentInfo" style="display: none;">
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> Student Found!</h6>
+                        <p class="mb-1"><strong>Name:</strong> <span id="foundStudentName"></span></p>
+                        <p class="mb-1"><strong>Roll Number:</strong> <span id="foundStudentRoll"></span></p>
+                        <p class="mb-0"><strong>Course:</strong> <span id="foundStudentCourse"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="startScanBtn">
+                    <i class="fas fa-play"></i> Start Scanning
+                </button>
+                <button type="button" class="btn btn-success" id="selectStudentBtn" style="display: none;" data-bs-dismiss="modal">
+                    <i class="fas fa-check"></i> Select Student
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    let scannedStudentId = null;
+    
     $(document).ready(function() {
         $('.select2').select2({
             placeholder: 'Search for a student...',
@@ -110,6 +184,85 @@
             }
         });
     });
+    
+    // Reset modal on open
+    $('#scanCardModal').on('show.bs.modal', function() {
+        $('#scanStatus').show();
+        $('#studentInfo').hide();
+        $('#scanSpinner').hide();
+        $('#scanMessage').hide();
+        $('#startScanBtn').show();
+        $('#selectStudentBtn').hide();
+        scannedStudentId = null;
+    });
+    
+    // Start scanning
+    $('#startScanBtn').on('click', function() {
+        $('#scanSpinner').show();
+        $('#scanMessage').hide();
+        $('#startScanBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Waiting for card...');
+        
+        // Send request to Raspberry Pi to scan card
+        // Replace with your Pi's IP address
+        const piUrl = 'http://172.20.10.2:5000/scan-for-student';
+        
+        fetch(piUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'scan_for_fine'})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.card_id) {
+                // Card scanned, now get student details from Django
+                return fetch("{% url 'scan_card_for_fine' %}", {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({card_id: data.card_id})
+                });
+            } else {
+                throw new Error(data.error || 'Failed to scan card');
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            $('#scanSpinner').hide();
+            if (data.success) {
+                // Show student information
+                scannedStudentId = data.student_id;
+                $('#foundStudentName').text(data.student_name);
+                $('#foundStudentRoll').text(data.roll_number);
+                $('#foundStudentCourse').text(data.course + ' - ' + data.department);
+                $('#scanStatus').hide();
+                $('#studentInfo').show();
+                $('#startScanBtn').hide();
+                $('#selectStudentBtn').show();
+            } else {
+                showScanError(data.error);
+            }
+        })
+        .catch(error => {
+            $('#scanSpinner').hide();
+            showScanError(error.message || 'Failed to scan card. Please check if the scanner is connected.');
+        });
+    });
+    
+    // Select scanned student
+    $('#selectStudentBtn').on('click', function() {
+        if (scannedStudentId) {
+            // Set the student in the select2 dropdown
+            $('#id_student').val(scannedStudentId).trigger('change');
+        }
+    });
+    
+    function showScanError(message) {
+        $('#scanMessage')
+            .removeClass('alert-success')
+            .addClass('alert-danger')
+            .html('<i class="fas fa-exclamation-triangle"></i> ' + message)
+            .show();
+        $('#startScanBtn').prop('disabled', false).html('<i class="fas fa-redo"></i> Try Again');
+    }
 </script>
 
 

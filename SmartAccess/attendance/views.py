@@ -197,23 +197,34 @@ def nfc_scan_api(request):
 
             # Prevent duplicate scans
             if last_log and (now - last_log.timestamp < time_gap):
-                return JsonResponse({'success': False, 'error': 'Please wait before scanning again'})
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Please wait before scanning again'
+                })
 
             # Decide next action
             if last_log and last_log.action == 'in':
                 action = 'out'
                 student.is_in_university = False
-                message = f"{student.name} checked out"
+                status_message = f"{student.name} checked out"
             else:
                 action = 'in'
                 student.is_in_university = True
-                message = f"{student.name} checked in"
+                status_message = f"{student.name} checked in"
 
             # Save new entry
             EntryLog.objects.create(student=student, action=action)
             student.save()
 
-            return JsonResponse({'success': True, 'message': message})
+            return JsonResponse({
+                'success': True,
+                'student_name': student.name,
+                'roll_number': student.roll_number,
+                'action': action,
+                'status': 'in' if student.is_in_university else 'out',
+                'message': status_message,
+                'timestamp': now.isoformat()
+            })
 
         except json.JSONDecodeError:
             return JsonResponse({'success': False, 'error': 'Invalid JSON'})

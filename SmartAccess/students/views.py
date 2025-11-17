@@ -195,7 +195,7 @@ def assign_card_request(request, student_id):
     # Check permissions
     if not (request.user.is_superuser or request.user.groups.filter(name='Teachers').exists()):
         messages.error(request, "Access denied. Teacher or admin privileges required.")
-        return redirect('login')  # Redirect to login instead of dashboard_redirect
+        return redirect('register_student')
     
     try:
         student = Student.objects.get(id=student_id)
@@ -203,7 +203,7 @@ def assign_card_request(request, student_id):
         # Check if student already has a card
         if student.nfc_uid:
             messages.warning(request, f"{student.name} already has an assigned NFC card.")
-            return redirect('login')
+            return redirect('register_student')
         
         # Send request to Raspberry Pi to scan card
         pi_response = request_card_scan_from_pi(student.roll_number)
@@ -221,6 +221,8 @@ def assign_card_request(request, student_id):
             student.nfc_uid = new_uid
             student.save()
             messages.success(request, f"NFC card successfully assigned to {student.name}!")
+            # Redirect to student list on success
+            return redirect('register_student')
             
         else:
             error_msg = pi_response.get('error', 'Unknown error')
@@ -228,12 +230,15 @@ def assign_card_request(request, student_id):
                 messages.error(request, "No card detected within 30 seconds. Please try again.")
             else:
                 messages.error(request, f"Failed to assign card: {error_msg}")
+            # Stay on assignment page for errors
             return redirect('assign_card_page', student_id=student_id)
             
     except Student.DoesNotExist:
         messages.error(request, "Student not found")
+        return redirect('register_student')
     
-    return redirect('login')
+    # Default redirect to student list
+    return redirect('register_student')
 
 
 @login_required  
@@ -242,7 +247,7 @@ def remove_card(request, student_id):
     # Check permissions
     if not (request.user.is_superuser or request.user.groups.filter(name='Teachers').exists()):
         messages.error(request, "Access denied. Teacher or admin privileges required.")
-        return redirect('login')
+        return redirect('register_student')
     
     try:
         student = Student.objects.get(id=student_id)
@@ -256,7 +261,8 @@ def remove_card(request, student_id):
     except Student.DoesNotExist:
         messages.error(request, "Student not found")
     
-    return redirect('login')
+    # Redirect back to student list
+    return redirect('register_student')
 
 
 def request_card_scan_from_pi(roll_number):

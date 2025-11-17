@@ -11,6 +11,7 @@ urlpatterns = [
     path('dashboard_redirect/', views.dashboard_redirect, name='dashboard_redirect'),
     path('profile/', views.profile_view, name='profile'),
     path('change-password/', views.change_password_manual, name='change_password_manual'),
+    path('logout/', views.logout_view, name='logout'),
     
     # Password reset views
     path('password-reset/', views.StudentPasswordResetView.as_view(), name='password_reset'),
