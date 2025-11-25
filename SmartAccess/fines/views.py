@@ -92,9 +92,7 @@ def scan_card_for_fine(request):
                     'success': True,
                     'student_id': student.id,
                     'student_name': student.name,
-                    'roll_number': student.roll_number,
-                    'course': student.course,
-                    'department': student.department
+                    'roll_number': student.roll_number
                 })
             except Student.DoesNotExist:
                 return JsonResponse({

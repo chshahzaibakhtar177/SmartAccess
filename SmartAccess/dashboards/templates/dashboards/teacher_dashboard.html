@@ -116,6 +116,24 @@
                 </div>
             </div>
 
+            <!-- Alumni Management -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Alumni Management</h5>
+                    <a href="{% url 'alumni:select_students_for_alumni' %}" class="btn btn-sm btn-outline-primary">Manage Alumni</a>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'alumni:select_students_for_alumni' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-user-graduate me-1"></i>Convert Students to Alumni
+                        </a>
+                        <a href="{% url 'alumni:directory' %}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-address-book me-1"></i>View Alumni Directory
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Transportation Quick Access -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -125,12 +143,12 @@
                 <div class="card-body">
                     <div class="row g-2">
                         <div class="col-6">
-                            <a href="{% url 'transportation:bus_management' %}" class="btn btn-outline-primary btn-sm w-100">
+                            <a href="{% url 'transportation:bus_list' %}" class="btn btn-outline-primary btn-sm w-100">
                                 <i class="fas fa-bus me-1"></i>Manage Buses
                             </a>
                         </div>
                         <div class="col-6">
-                            <a href="{% url 'transportation:route_management' %}" class="btn btn-outline-info btn-sm w-100">
+                            <a href="{% url 'transportation:route_list' %}" class="btn btn-outline-info btn-sm w-100">
                                 <i class="fas fa-route me-1"></i>Manage Routes
                             </a>
                         </div>

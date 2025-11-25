@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h3 mb-0 text-gray-800">Join Event</h1>
-        <p class="text-muted">Register for {{ event.name }}</p>
+        <p class="text-muted">Register for {{ event.title }}</p>
     </div>
     <div>
         <a href="{% url 'alumni:events' %}" class="btn btn-outline-secondary">
@@ -27,17 +27,17 @@
             </div>
             <div class="card-body">
                 {% if event.image %}
-                    <img src="{{ event.image.url }}" class="img-fluid rounded mb-3" alt="{{ event.name }}">
+                    <img src="{{ event.image.url }}" class="img-fluid rounded mb-3" alt="{{ event.title }}">
                 {% endif %}
                 
-                <h4 class="mb-3">{{ event.name }}</h4>
+                <h4 class="mb-3">{{ event.title }}</h4>
                 
                 <div class="row mb-3">
                     <div class="col-sm-4">
                         <strong>Date:</strong>
                     </div>
                     <div class="col-sm-8">
-                        {{ event.event_date|date:"F d, Y" }}
+                        {{ event.start_datetime|date:"F d, Y" }}
                     </div>
                 </div>
                 
@@ -50,13 +50,13 @@
                     </div>
                 </div>
                 
-                {% if event.location %}
+                {% if event.venue %}
                 <div class="row mb-3">
                     <div class="col-sm-4">
                         <strong>Location:</strong>
                     </div>
                     <div class="col-sm-8">
-                        {{ event.location }}
+                        {{ event.venue }}
                     </div>
                 </div>
                 {% endif %}

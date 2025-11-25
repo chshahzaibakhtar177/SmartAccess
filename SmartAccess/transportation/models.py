@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 
 
 class Bus(models.Model):
@@ -8,7 +9,7 @@ class Bus(models.Model):
     driver_name = models.CharField(max_length=100)
     driver_contact = models.CharField(max_length=15)
     capacity = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(100)])
-    route = models.CharField(max_length=200)
+    route = models.ForeignKey('Route', on_delete=models.PROTECT, related_name='buses', help_text='Assigned route for this bus')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -19,7 +20,24 @@ class Bus(models.Model):
         ordering = ['bus_number']
 
     def __str__(self):
-        return f"Bus {self.bus_number} - {self.route}"
+        return f"Bus {self.bus_number} - {self.route.route_name}"
+    
+    @property
+    def current_student_count(self):
+        """Get number of students currently assigned to this bus"""
+        return self.assigned_students.filter(is_active=True).count()
+    
+    @property
+    def occupancy_percentage(self):
+        """Calculate bus occupancy percentage"""
+        if self.capacity > 0:
+            return int((self.current_student_count / self.capacity) * 100)
+        return 0
+    
+    @property
+    def available_seats(self):
+        """Calculate available seats"""
+        return max(0, self.capacity - self.current_student_count)
 
 
 class Route(models.Model):
@@ -162,3 +180,40 @@ class BusSchedule(models.Model):
 
     def __str__(self):
         return f"{self.bus.bus_number} - {self.route.route_name} ({self.get_schedule_type_display()} {self.departure_time})"
+
+
+class StudentBusAssignment(models.Model):
+    """Assign students to specific bus routes"""
+    from students.models import Student
+    
+    student = models.OneToOneField('students.Student', on_delete=models.CASCADE, related_name='bus_assignment')
+    bus = models.ForeignKey(Bus, on_delete=models.CASCADE, related_name='assigned_students')
+    route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='assigned_students')
+    pickup_location = models.CharField(max_length=200, help_text="Student's pickup/drop location")
+    is_active = models.BooleanField(default=True)
+    assigned_date = models.DateField(auto_now_add=True)
+    notes = models.TextField(blank=True, help_text="Additional notes about the assignment")
+    
+    class Meta:
+        verbose_name = "Student Bus Assignment"
+        verbose_name_plural = "Student Bus Assignments"
+        ordering = ['bus__bus_number', 'student__roll_number']
+    
+    def __str__(self):
+        return f"{self.student.roll_number} → {self.bus.bus_number} ({self.route.route_name})"
+    
+    def clean(self):
+        """Validate bus capacity"""
+        if self.bus and self.is_active:
+            # Count active assignments for this bus (excluding current assignment if updating)
+            active_count = StudentBusAssignment.objects.filter(
+                bus=self.bus, 
+                is_active=True
+            ).exclude(pk=self.pk).count()
+            
+            if active_count >= self.bus.capacity:
+                raise ValidationError(f'Bus {self.bus.bus_number} is at full capacity ({self.bus.capacity} students)')
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

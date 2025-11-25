@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Transportation - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-bus text-primary"></i> My Transportation Dashboard</h2>
+        </div>
+    </div>
+
+    <!-- Bus Assignment Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            {% if assignment %}
+                <div class="card shadow-lg border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="fas fa-bus"></i> Your Assigned Bus</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">Bus Information</h5>
+                                <table class="table table-borderless">
+                                    <tr>
+                                        <td class="text-muted" style="width: 150px;"><i class="fas fa-bus"></i> Bus Number:</td>
+                                        <td><strong class="fs-5">{{ assignment.bus.bus_number }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted"><i class="fas fa-user-tie"></i> Driver:</td>
+                                        <td><strong>{{ assignment.bus.driver_name }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted"><i class="fas fa-phone"></i> Contact:</td>
+                                        <td><strong>{{ assignment.bus.driver_contact }}</strong></td>
+                                    </tr>
+                                    {% if assignment.bus.license_plate %}
+                                    <tr>
+                                        <td class="text-muted"><i class="fas fa-id-card"></i> License Plate:</td>
+                                        <td><strong>{{ assignment.bus.license_plate }}</strong></td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                {% if assignment.bus.route %}
+                                <h5 class="text-info mb-3">Route Information</h5>
+                                <table class="table table-borderless">
+                                    <tr>
+                                        <td class="text-muted" style="width: 150px;"><i class="fas fa-route"></i> Route Name:</td>
+                                        <td><strong>{{ assignment.bus.route.name }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted"><i class="fas fa-road"></i> Distance:</td>
+                                        <td><strong>{{ assignment.bus.route.distance|default:"N/A" }} km</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted"><i class="fas fa-clock"></i> Est. Time:</td>
+                                        <td><strong>{{ assignment.bus.route.estimated_time|default:"N/A" }}</strong></td>
+                                    </tr>
+                                    {% if assignment.bus.route.stops %}
+                                    <tr>
+                                        <td class="text-muted" style="vertical-align: top;"><i class="fas fa-map-marker-alt"></i> Stops:</td>
+                                        <td><strong class="small">{{ assignment.bus.route.stops }}</strong></td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> Route information not available
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if assignment.notes %}
+                        <div class="alert alert-info mt-3 mb-0">
+                            <strong><i class="fas fa-sticky-note"></i> Note:</strong> {{ assignment.notes }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer text-muted">
+                        <small><i class="fas fa-calendar-alt"></i> Assigned since: {{ assignment.assigned_at|date:"F d, Y" }}</small>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-warning shadow">
+                    <h5><i class="fas fa-exclamation-circle"></i> No Bus Assigned</h5>
+                    <p class="mb-0">You are not currently assigned to any bus. Please contact the transportation department if you need bus service.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow h-100 border-success">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-check fa-3x text-success mb-3"></i>
+                    <h3 class="text-success">{{ total_trips }}</h3>
+                    <p class="text-muted mb-0">Total Trips This Month</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow h-100 border-info">
+                <div class="card-body text-center">
+                    <i class="fas fa-sign-in-alt fa-3x text-info mb-3"></i>
+                    <h3 class="text-info">{{ boarding_count }}</h3>
+                    <p class="text-muted mb-0">Boarding Events</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow h-100 border-warning">
+                <div class="card-body text-center">
+                    <i class="fas fa-sign-out-alt fa-3x text-warning mb-3"></i>
+                    <h3 class="text-warning">{{ alighting_count }}</h3>
+                    <p class="text-muted mb-0">Alighting Events</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transport Logs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent Transportation History</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_logs %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-calendar"></i> Date & Time</th>
+                                        <th><i class="fas fa-bus"></i> Bus</th>
+                                        <th><i class="fas fa-route"></i> Route</th>
+                                        <th><i class="fas fa-exchange-alt"></i> Action</th>
+                                        <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in recent_logs %}
+                                    <tr>
+                                        <td>{{ log.timestamp|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ log.bus.bus_number }}</span>
+                                        </td>
+                                        <td>
+                                            {% if log.route %}
+                                                {{ log.route.name }}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if log.action == 'board' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-sign-in-alt"></i> Boarded
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-sign-out-alt"></i> Alighted
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ log.location|default:"N/A" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if total_logs > 10 %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'transportation:transport_logs' %}" class="btn btn-primary">
+                                <i class="fas fa-list"></i> View All Logs ({{ total_logs }})
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info mb-0 text-center">
+                            <i class="fas fa-info-circle fa-2x mb-2"></i>
+                            <p class="mb-0">No transportation history available yet. Your trips will be recorded here.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fas fa-question-circle"></i> Need Help?</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-phone-alt text-primary"></i> Contact Transportation Office</h6>
+                            <p class="small mb-0">Call: (123) 456-7890</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-envelope text-primary"></i> Email Support</h6>
+                            <p class="small mb-0">transport@school.edu</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-clock text-primary"></i> Office Hours</h6>
+                            <p class="small mb-0">Mon-Fri: 7:00 AM - 6:00 PM</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

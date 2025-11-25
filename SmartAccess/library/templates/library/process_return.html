@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Process Book Return - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-undo-alt"></i> Process Book Return
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-book"></i> Book Details</h6>
+                        <p class="mb-1"><strong>Title:</strong> {{ borrow.book.title }}</p>
+                        <p class="mb-1"><strong>ISBN:</strong> {{ borrow.book.isbn }}</p>
+                        <p class="mb-0"><strong>Copy Number:</strong> {{ borrow.book.copy_number }}</p>
+                    </div>
+
+                    <div class="alert alert-primary">
+                        <h6><i class="fas fa-user-graduate"></i> Student Details</h6>
+                        <p class="mb-1"><strong>Name:</strong> {{ borrow.student.user.get_full_name }}</p>
+                        <p class="mb-1"><strong>Student ID:</strong> {{ borrow.student.student_id }}</p>
+                        <p class="mb-0"><strong>Class:</strong> {{ borrow.student.class_name }}</p>
+                    </div>
+
+                    <div class="alert {% if borrow.status == 'overdue' %}alert-danger{% else %}alert-warning{% endif %}">
+                        <h6><i class="fas fa-calendar-alt"></i> Borrow Information</h6>
+                        <p class="mb-1"><strong>Borrowed On:</strong> {{ borrow.borrow_date|date:"F d, Y" }}</p>
+                        <p class="mb-1"><strong>Due Date:</strong> {{ borrow.due_date|date:"F d, Y" }}</p>
+                        {% if borrow.days_overdue > 0 %}
+                            <p class="mb-1 text-danger"><strong>Days Overdue:</strong> {{ borrow.days_overdue }} days</p>
+                            <p class="mb-0 text-danger"><strong>Fine Amount:</strong> ${{ borrow.fine_amount }}</p>
+                        {% else %}
+                            <p class="mb-0 text-success"><i class="fas fa-check-circle"></i> Book returned on time</p>
+                        {% endif %}
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {% if borrow.fine_amount > 0 %}
+                        <div class="card border-danger mb-3">
+                            <div class="card-header bg-danger text-white">
+                                <h6 class="mb-0"><i class="fas fa-dollar-sign"></i> Fine Payment</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2">Total fine to be collected: <strong class="text-danger fs-5">${{ borrow.fine_amount }}</strong></p>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fine_paid" id="fine_paid" value="yes">
+                                    <label class="form-check-label" for="fine_paid">
+                                        <strong>Fine has been paid by the student</strong>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="return_notes" class="form-label">Return Notes (Optional)</label>
+                            <textarea class="form-control" name="return_notes" id="return_notes" rows="3" 
+                                      placeholder="Any observations about the book condition, damages, etc."></textarea>
+                            <small class="text-muted">Document any damage or issues with the returned book</small>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Before Processing:</h6>
+                            <ul class="mb-0 small">
+                                <li>Check the physical condition of the book</li>
+                                <li>Verify all pages are intact</li>
+                                <li>Collect any applicable fines</li>
+                                <li>Update any notes about damages</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <a href="{% url 'library_dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> Process Return
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Book Borrow History -->
+            <div class="card mt-3 shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="fas fa-history"></i> This Student's Borrow History</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">
+                        <i class="fas fa-info-circle"></i> Reference for this student's library usage pattern
+                    </p>
+                    {% if borrow.student %}
+                        <p class="mb-1">
+                            <strong>Total Books Borrowed:</strong> 
+                            {{ borrow.student.borrowed_books.count }}
+                        </p>
+                        <p class="mb-0">
+                            <strong>Currently Active Borrows:</strong> 
+                            {{ borrow.student.borrowed_books.filter.count }}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

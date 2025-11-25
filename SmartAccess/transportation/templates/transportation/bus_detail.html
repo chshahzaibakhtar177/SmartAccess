@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ bus.bus_number }} Details - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-bus text-primary"></i> Bus {{ bus.bus_number }}</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'transportation:bus_edit' bus.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="{% url 'transportation:bus_delete' bus.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+            <a href="{% url 'transportation:bus_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Bus Information -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Bus Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Status</small>
+                        <div>
+                            <span class="badge 
+                                {% if bus.status == 'active' %}bg-success
+                                {% elif bus.status == 'maintenance' %}bg-warning
+                                {% else %}bg-secondary{% endif %} fs-6">
+                                {{ bus.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">License Plate</small>
+                        <div>{{ bus.license_plate|default:"N/A" }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Model</small>
+                        <div>{{ bus.model|default:"N/A" }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Capacity</small>
+                        <div>
+                            <i class="fas fa-users"></i> {{ bus.capacity }} students
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Current Occupancy</small>
+                        <div>
+                            {{ bus.current_student_count }} / {{ bus.capacity }} 
+                            ({{ bus.occupancy_percentage }}%)
+                        </div>
+                        <div class="progress mt-1">
+                            <div class="progress-bar 
+                                {% if bus.occupancy_percentage >= 90 %}bg-danger
+                                {% elif bus.occupancy_percentage >= 70 %}bg-warning
+                                {% else %}bg-success{% endif %}"
+                                style="width: {{ bus.occupancy_percentage }}%">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Assigned Route</small>
+                        <div>
+                            {% if bus.route and bus.route.id %}
+                                <a href="{% url 'transportation:route_detail' bus.route.id %}" class="text-decoration-none">
+                                    <i class="fas fa-route"></i> {{ bus.route.name }}
+                                </a>
+                            {% elif bus.route %}
+                                <i class="fas fa-route"></i> {{ bus.route }}
+                            {% else %}
+                                <span class="text-muted">No route assigned</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if bus.notes %}
+                    <div class="mb-0">
+                        <small class="text-muted">Notes</small>
+                        <div class="small">{{ bus.notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Driver Information -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-tie"></i> Driver Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Name</small>
+                        <div class="fs-5">{{ bus.driver_name }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Contact</small>
+                        <div>
+                            <i class="fas fa-phone"></i> {{ bus.driver_contact }}
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <small class="text-muted">Added On</small>
+                        <div>{{ bus.created_at|date:"F d, Y" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Total Trips (This Month)</small>
+                        <div class="fs-4 text-success">{{ total_trips }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Students Assigned</small>
+                        <div class="fs-4 text-primary">{{ assigned_students.count }}</div>
+                    </div>
+
+                    <div class="mb-0">
+                        <small class="text-muted">Available Seats</small>
+                        <div class="fs-4 {% if bus.available_seats <= 5 %}text-danger{% else %}text-info{% endif %}">
+                            {{ bus.available_seats }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assigned Students -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-users"></i> Assigned Students ({{ assigned_students.count }})</h5>
+                    <a href="{% url 'transportation:student_assignment_create' %}?bus_id={{ bus.id }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-plus"></i> Assign Student to This Bus
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if assigned_students %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Class</th>
+                                        <th>Pickup Location</th>
+                                        <th>Assigned Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for assignment in assigned_students %}
+                                    <tr>
+                                        <td>{{ assignment.student.roll_number }}</td>
+                                        <td>{{ assignment.student.name }}</td>
+                                        <td>N/A</td>
+                                        <td>{{ assignment.pickup_location|default:"N/A" }}</td>
+                                        <td>{{ assignment.assigned_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'transportation:student_assignment_edit' assignment.id %}" 
+                                               class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'transportation:student_assignment_delete' assignment.id %}" 
+                                               class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> No students assigned to this bus yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transport Logs -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent Transport Logs</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_logs %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Student</th>
+                                        <th>Action</th>
+                                        <th>Location</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in recent_logs %}
+                                    <tr>
+                                        <td>{{ log.timestamp|date:"M d, Y H:i" }}</td>
+                                        <td>{{ log.student.user.get_full_name }}</td>
+                                        <td>
+                                            <span class="badge {% if log.action == 'board' %}bg-success{% else %}bg-info{% endif %}">
+                                                {{ log.get_action_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ log.location|default:"N/A" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> No transport logs recorded yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

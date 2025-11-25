@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4>Convert Students to Alumni</h4>
+        <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Select Students to Convert to Alumni</h5>
+            <p class="text-muted mb-0 mt-2">
+                <i class="fas fa-info-circle"></i> 
+                When a student is converted to alumni, they keep their login credentials, NFC card access, 
+                and can enroll in events. They can use entry/exit system just like regular students.
+            </p>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Photo</th>
+                            <th>Roll Number</th>
+                            <th>Name</th>
+                            <th>Program</th>
+                            <th>NFC Card</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in students_with_status %}
+                        <tr>
+                            <td>
+                                {% if item.student.photo %}
+                                    <img src="{{ item.student.photo.url }}" alt="{{ item.student.name }}" 
+                                         class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" 
+                                         style="width: 40px; height: 40px;">
+                                        <i class="fas fa-user text-white"></i>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.student.roll_number }}</td>
+                            <td>
+                                <a href="{% url 'student_detail' item.student.id %}">
+                                    {{ item.student.name }}
+                                </a>
+                            </td>
+                            <td>{{ item.student.roll_number|slice:":2" }}</td>
+                            <td>
+                                {% if item.student.nfc_uid %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle"></i> Assigned
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-exclamation-circle"></i> Not Assigned
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.has_alumni %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-user-graduate"></i> Already Alumni
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-primary">
+                                        <i class="fas fa-user"></i> Active Student
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.has_alumni %}
+                                    <button type="button" class="btn btn-sm btn-warning" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#revertModal{{ item.student.id }}">
+                                        <i class="fas fa-undo"></i> Revert to Student
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-sm btn-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#convertModal{{ item.student.id }}">
+                                        <i class="fas fa-user-graduate"></i> Convert to Alumni
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        <!-- Convert to Alumni Modal -->
+                        {% if not item.has_alumni %}
+                        <div class="modal fade" id="convertModal{{ item.student.id }}" tabindex="-1" 
+                             aria-labelledby="convertModalLabel{{ item.student.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="convertModalLabel{{ item.student.id }}">
+                                            Convert {{ item.student.name }} to Alumni
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="post" action="{% url 'alumni:convert_student' item.student.id %}">
+                                        {% csrf_token %}
+                                        <div class="modal-body">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i>
+                                                This student will become an alumni and can:
+                                                <ul class="mb-0 mt-2">
+                                                    <li>Login with their existing credentials</li>
+                                                    <li>Use their NFC card for entry/exit</li>
+                                                    <li>Enroll in university events</li>
+                                                    <li>Access alumni features</li>
+                                                </ul>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Student Information</label>
+                                                <ul class="list-unstyled">
+                                                    <li><strong>Name:</strong> {{ item.student.name }}</li>
+                                                    <li><strong>Roll Number:</strong> {{ item.student.roll_number }}</li>
+                                                    <li><strong>NFC Card:</strong> 
+                                                        {% if item.student.nfc_uid %}
+                                                            <span class="badge bg-success">{{ item.student.nfc_uid }}</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">Not Assigned</span>
+                                                        {% endif %}
+                                                    </li>
+                                                </ul>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="graduation_year{{ item.student.id }}" class="form-label">
+                                                    Graduation Year <span class="text-danger">*</span>
+                                                </label>
+                                                <input type="number" class="form-control" 
+                                                       id="graduation_year{{ item.student.id }}" 
+                                                       name="graduation_year" 
+                                                       min="2000" max="2050" 
+                                                       value="2024" required>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="degree_program{{ item.student.id }}" class="form-label">
+                                                    Degree Program <span class="text-danger">*</span>
+                                                </label>
+                                                <input type="text" class="form-control" 
+                                                       id="degree_program{{ item.student.id }}" 
+                                                       name="degree_program" 
+                                                       placeholder="e.g., BS Computer Science" required>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="final_gpa{{ item.student.id }}" class="form-label">
+                                                    Final GPA (Optional)
+                                                </label>
+                                                <input type="number" class="form-control" 
+                                                       id="final_gpa{{ item.student.id }}" 
+                                                       name="final_gpa" 
+                                                       step="0.01" min="0" max="4" 
+                                                       placeholder="e.g., 3.50">
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-user-graduate"></i> Convert to Alumni
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Revert to Student Modal -->
+                        {% if item.has_alumni %}
+                        <div class="modal fade" id="revertModal{{ item.student.id }}" tabindex="-1" 
+                             aria-labelledby="revertModalLabel{{ item.student.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-warning text-dark">
+                                        <h5 class="modal-title" id="revertModalLabel{{ item.student.id }}">
+                                            <i class="fas fa-undo"></i> Revert {{ item.student.name }} to Student
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form method="post" action="{% url 'alumni:revert_alumni' item.student.id %}">
+                                        {% csrf_token %}
+                                        <div class="modal-body">
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <strong>Warning:</strong> This will revert the alumni back to student-only status:
+                                                <ul class="mb-0 mt-2">
+                                                    <li>Alumni profile will be deleted</li>
+                                                    <li>Alumni group membership will be removed</li>
+                                                    <li>Student profile will remain active</li>
+                                                    <li>Login credentials stay the same</li>
+                                                    <li>NFC card access will continue to work</li>
+                                                </ul>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Student Information</label>
+                                                <ul class="list-unstyled">
+                                                    <li><strong>Name:</strong> {{ item.student.name }}</li>
+                                                    <li><strong>Roll Number:</strong> {{ item.student.roll_number }}</li>
+                                                </ul>
+                                            </div>
+
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="confirmRevert{{ item.student.id }}" required>
+                                                <label class="form-check-label" for="confirmRevert{{ item.student.id }}">
+                                                    I understand this will remove the alumni profile
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-warning">
+                                                <i class="fas fa-undo"></i> Revert to Student
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No students found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

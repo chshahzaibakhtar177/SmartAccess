@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from students.models import Student
+from teachers.models import Teacher
 
 # Library Management Models
 class BookCategory(models.Model):
@@ -25,7 +26,7 @@ class Book(models.Model):
     ]
     
     # Book Information
-    isbn = models.CharField(max_length=13, unique=True, help_text='ISBN-13 format')
+    isbn = models.CharField(max_length=13, help_text='ISBN-13 format', db_index=True)
     title = models.CharField(max_length=200)
     author = models.CharField(max_length=200)
     publisher = models.CharField(max_length=100)
@@ -46,10 +47,6 @@ class Book(models.Model):
     # Book Cover
     cover_image = models.ImageField(upload_to='book_covers/', null=True, blank=True)
     
-    # NFC Integration
-    nfc_tag_uid = models.CharField(max_length=50, unique=True, null=True, blank=True, 
-                                   help_text='NFC tag attached to book for quick checkout')
-    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -61,7 +58,6 @@ class Book(models.Model):
             models.Index(fields=['isbn']),
             models.Index(fields=['status']),
             models.Index(fields=['category']),
-            models.Index(fields=['nfc_tag_uid']),
         ]
     
     def __str__(self):
@@ -100,6 +96,8 @@ class BookBorrow(models.Model):
     # Borrowing Information
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='borrows')
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='book_borrows')
+    issued_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True, related_name='books_issued', help_text='Teacher who issued the book')
+    returned_to = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True, related_name='books_returned', help_text='Teacher who received the book back')
     
     # Dates
     borrow_date = models.DateTimeField(auto_now_add=True)

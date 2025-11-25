@@ -44,11 +44,11 @@
                     </select>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <label for="department" class="form-label">Department</label>
-                    <select class="form-select" id="department" name="department">
-                        <option value="">All Departments</option>
-                        {% for dept in departments %}
-                            <option value="{{ dept }}" {% if dept == selected_department %}selected{% endif %}>
+                    <label for="department" class="form-label">Degree Program</label>
+                    <select class="form-select" id="degree_program" name="degree_program">
+                        <option value="">All Degree Programs</option>
+                        {% for dept in degree_programs %}
+                            <option value="{{ dept }}" {% if dept == selected_degree_program %}selected{% endif %}>
                                 {{ dept }}
                             </option>
                         {% endfor %}
@@ -60,7 +60,7 @@
                     </button>
                 </div>
             </div>
-            {% if search_query or selected_graduation_year or selected_department %}
+            {% if search_query or selected_graduation_year or selected_degree_program %}
             <div class="row">
                 <div class="col-12">
                     <a href="{% url 'alumni:directory' %}" class="btn btn-outline-secondary btn-sm">
@@ -121,15 +121,15 @@
                                 </h6>
                                 
                                 <div class="text-muted mb-2">
-                                    <small>{{ alumni.course }}</small><br>
+                                    <small>{{ alumni.degree_program }}</small><br>
                                     <small>Class of {{ alumni.graduation_year }}</small>
                                 </div>
                                 
-                                {% if alumni.current_position %}
+                                {% if alumni.current_job_title %}
                                 <div class="text-primary mb-2">
-                                    <small><strong>{{ alumni.current_position }}</strong></small>
-                                    {% if alumni.company %}
-                                        <br><small class="text-muted">at {{ alumni.company }}</small>
+                                    <small><strong>{{ alumni.current_job_title }}</strong></small>
+                                    {% if alumni.current_company %}
+                                        <br><small class="text-muted">at {{ alumni.current_company }}</small>
                                     {% endif %}
                                 </div>
                                 {% endif %}
@@ -186,7 +186,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td>{{ alumni.course }}</td>
+                                <td>{{ alumni.degree_program }}</td>
                                 <td>{{ alumni.graduation_year }}</td>
                                 <td>{{ alumni.current_position|default:"-" }}</td>
                                 <td>{{ alumni.company|default:"-" }}</td>
@@ -214,7 +214,7 @@
                 <ul class="pagination justify-content-center">
                     {% if alumni_list.has_previous %}
                         <li class="page-item">
-                            <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_department %}department={{ selected_department }}&{% endif %}page={{ alumni_list.previous_page_number }}">
+                            <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_degree_program %}department={{ selected_degree_program }}&{% endif %}page={{ alumni_list.previous_page_number }}">
                                 Previous
                             </a>
                         </li>
@@ -231,7 +231,7 @@
                             </li>
                         {% elif num > alumni_list.number|add:'-3' and num < alumni_list.number|add:'3' %}
                             <li class="page-item">
-                                <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_department %}department={{ selected_department }}&{% endif %}page={{ num }}">
+                                <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_degree_program %}department={{ selected_degree_program }}&{% endif %}page={{ num }}">
                                     {{ num }}
                                 </a>
                             </li>
@@ -240,7 +240,7 @@
 
                     {% if alumni_list.has_next %}
                         <li class="page-item">
-                            <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_department %}department={{ selected_department }}&{% endif %}page={{ alumni_list.next_page_number }}">
+                            <a class="page-link" href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if selected_graduation_year %}graduation_year={{ selected_graduation_year }}&{% endif %}{% if selected_degree_program %}department={{ selected_degree_program }}&{% endif %}page={{ alumni_list.next_page_number }}">
                                 Next
                             </a>
                         </li>
@@ -256,20 +256,20 @@
             <div class="text-center py-5">
                 <i class="fas fa-search fa-4x text-muted mb-3"></i>
                 <h4 class="text-muted">
-                    {% if search_query or selected_graduation_year or selected_department %}
+                    {% if search_query or selected_graduation_year or selected_degree_program %}
                         No alumni found matching your criteria
                     {% else %}
                         No alumni in directory yet
                     {% endif %}
                 </h4>
                 <p class="text-muted">
-                    {% if search_query or selected_graduation_year or selected_department %}
+                    {% if search_query or selected_graduation_year or selected_degree_program %}
                         Try adjusting your search criteria or clearing the filters.
                     {% else %}
                         Alumni profiles will appear here once they are added to the system.
                     {% endif %}
                 </p>
-                {% if search_query or selected_graduation_year or selected_department %}
+                {% if search_query or selected_graduation_year or selected_degree_program %}
                 <a href="{% url 'alumni:directory' %}" class="btn btn-outline-primary">
                     <i class="fas fa-times"></i> Clear All Filters
                 </a>

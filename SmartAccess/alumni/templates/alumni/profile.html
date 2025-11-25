@@ -34,10 +34,10 @@
                     </div>
                 {% endif %}
                 <h4 class="mb-2">{{ alumni.user.get_full_name }}</h4>
-                <p class="text-muted mb-1">Student ID: {{ alumni.student_id }}</p>
+                <p class="text-muted mb-1">{{ alumni.degree_program }}</p>
                 <p class="text-primary mb-0">Class of {{ alumni.graduation_year }}</p>
-                {% if alumni.graduation_date %}
-                    <small class="text-muted">Graduated: {{ alumni.graduation_date|date:"F d, Y" }}</small>
+                {% if alumni.final_gpa %}
+                    <small class="text-muted">GPA: {{ alumni.final_gpa }}</small>
                 {% endif %}
             </div>
         </div>
@@ -84,15 +84,15 @@
                         <p class="form-control-static">{{ alumni.user.email }}</p>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted">Contact Number</label>
-                        <p class="form-control-static">{{ alumni.contact_number|default:"Not provided" }}</p>
+                        <label class="form-label text-muted">Phone Number</label>
+                        <p class="form-control-static">{{ alumni.phone_number|default:"Not provided" }}</p>
                     </div>
                 </div>
-                {% if alumni.address %}
+                {% if alumni.current_address %}
                 <div class="row">
                     <div class="col-12 mb-3">
-                        <label class="form-label text-muted">Address</label>
-                        <p class="form-control-static">{{ alumni.address }}</p>
+                        <label class="form-label text-muted">Current Address</label>
+                        <p class="form-control-static">{{ alumni.current_address }}</p>
                     </div>
                 </div>
                 {% endif %}
@@ -109,25 +109,17 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted">Course/Program</label>
-                        <p class="form-control-static">{{ alumni.course }}</p>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted">Department</label>
-                        <p class="form-control-static">{{ alumni.department }}</p>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted">Student ID</label>
-                        <p class="form-control-static">{{ alumni.student_id }}</p>
+                        <label class="form-label text-muted">Degree Program</label>
+                        <p class="form-control-static">{{ alumni.degree_program }}</p>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label text-muted">Graduation Year</label>
                         <p class="form-control-static">{{ alumni.graduation_year }}</p>
                     </div>
-                    {% if alumni.graduation_date %}
+                    {% if alumni.final_gpa %}
                     <div class="col-md-6 mb-3">
-                        <label class="form-label text-muted">Graduation Date</label>
-                        <p class="form-control-static">{{ alumni.graduation_date|date:"F d, Y" }}</p>
+                        <label class="form-label text-muted">Final GPA</label>
+                        <p class="form-control-static">{{ alumni.final_gpa }}</p>
                     </div>
                     {% endif %}
                 </div>
@@ -135,7 +127,7 @@
         </div>
 
         <!-- Professional Information -->
-        {% if alumni.current_position or alumni.company %}
+        {% if alumni.current_job_title or alumni.current_company %}
         <div class="card shadow mb-4">
             <div class="card-header py-3">
                 <h6 class="m-0 font-weight-bold text-primary">
@@ -144,16 +136,22 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    {% if alumni.current_position %}
+                    {% if alumni.current_job_title %}
                     <div class="col-md-6 mb-3">
                         <label class="form-label text-muted">Current Position</label>
-                        <p class="form-control-static">{{ alumni.current_position }}</p>
+                        <p class="form-control-static">{{ alumni.current_job_title }}</p>
                     </div>
                     {% endif %}
-                    {% if alumni.company %}
+                    {% if alumni.current_company %}
                     <div class="col-md-6 mb-3">
                         <label class="form-label text-muted">Company</label>
-                        <p class="form-control-static">{{ alumni.company }}</p>
+                        <p class="form-control-static">{{ alumni.current_company }}</p>
+                    </div>
+                    {% endif %}
+                    {% if alumni.industry %}
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted">Industry</label>
+                        <p class="form-control-static">{{ alumni.industry }}</p>
                     </div>
                     {% endif %}
                 </div>

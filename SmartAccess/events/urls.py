@@ -7,9 +7,13 @@ urlpatterns = [
     path('<int:event_id>/', views.event_detail, name='event_detail'),
     path('create/', views.create_event, name='create_event'),
     path('<int:event_id>/edit/', views.edit_event, name='edit_event'),
+    path('<int:event_id>/delete/', views.delete_event, name='delete_event'),
     path('<int:event_id>/register/', views.register_for_event, name='register_for_event'),
     path('<int:event_id>/cancel-registration/', views.cancel_event_registration, name='cancel_event_registration'),
-    path('api/nfc-checkin/', views.event_nfc_checkin_api, name='event_nfc_checkin_api'),
+    
+    # NFC Attendance API
+    path('api/nfc-attendance/', views.nfc_attendance_api, name='nfc_attendance_api'),
+    path('api/active-events/', views.active_events_api, name='active_events_api'),
     
     # Category management URLs
     path('categories/', views.category_list, name='category_list'),

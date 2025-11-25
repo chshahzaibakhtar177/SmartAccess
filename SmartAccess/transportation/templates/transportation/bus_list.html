@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bus Management - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="fas fa-bus"></i> Bus Management</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{% url 'transportation:bus_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Bus
+            </a>
+            <a href="{% url 'transportation:dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="search" placeholder="Search bus number or driver..." value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="status">
+                        <option value="">All Status</option>
+                        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                        <option value="maintenance" {% if request.GET.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="route">
+                        <option value="">All Routes</option>
+                        {% for route in all_routes %}
+                        <option value="{{ route.id }}" {% if request.GET.route|add:0 == route.id %}selected{% endif %}>{{ route.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bus List -->
+    <div class="row">
+        {% if page_obj %}
+            {% for bus in page_obj %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-bus text-primary"></i> {{ bus.bus_number }}
+                            </h5>
+                            <span class="badge 
+                                {% if bus.status == 'active' %}bg-success
+                                {% elif bus.status == 'maintenance' %}bg-warning
+                                {% else %}bg-secondary{% endif %}">
+                                {{ bus.get_status_display }}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <small class="text-muted">Driver:</small>
+                            <div>{{ bus.driver_name }}</div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <small class="text-muted">Route:</small>
+                            <div>
+                                {% if bus.route %}
+                                    <i class="fas fa-route"></i> {{ bus.route.name }}
+                                {% else %}
+                                    <span class="text-muted">Not assigned</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <small class="text-muted">Capacity:</small>
+                            <div>
+                                <i class="fas fa-users"></i> 
+                                {{ bus.current_student_count }}/{{ bus.capacity }} students
+                                <div class="progress mt-1" style="height: 6px;">
+                                    <div class="progress-bar 
+                                        {% if bus.occupancy_percentage >= 90 %}bg-danger
+                                        {% elif bus.occupancy_percentage >= 70 %}bg-warning
+                                        {% else %}bg-success{% endif %}"
+                                        style="width: {{ bus.occupancy_percentage }}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted">Contact:</small>
+                            <div><i class="fas fa-phone"></i> {{ bus.driver_contact }}</div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'transportation:bus_detail' bus.id %}" class="btn btn-sm btn-info flex-fill">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'transportation:bus_edit' bus.id %}" class="btn btn-sm btn-warning flex-fill">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'transportation:bus_delete' bus.id %}" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No buses found. 
+                    <a href="{% url 'transportation:bus_create' %}">Add the first bus</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Bus pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.route %}&route={{ request.GET.route }}{% endif %}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.route %}&route={{ request.GET.route }}{% endif %}">Previous</a>
+                </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.route %}&route={{ request.GET.route }}{% endif %}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.route %}&route={{ request.GET.route }}{% endif %}">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Statistics Summary -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <h4>{{ total_buses }}</h4>
+                    <small class="text-muted">Total Buses</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 class="text-success">{{ active_buses }}</h4>
+                    <small class="text-muted">Active</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 class="text-warning">{{ maintenance_buses }}</h4>
+                    <small class="text-muted">Maintenance</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 class="text-secondary">{{ inactive_buses }}</h4>
+                    <small class="text-muted">Inactive</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

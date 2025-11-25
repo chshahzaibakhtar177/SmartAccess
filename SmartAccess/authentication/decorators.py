@@ -55,3 +55,27 @@ def admin_required(view_func):
             messages.error(request, "Access denied. Administrator privileges required.")
             return redirect('dashboard_redirect')
     return _wrapped_view
+
+
+def alumni_required(view_func):
+    """
+    Decorator to require alumni privileges for a view.
+    
+    Checks if the user has an alumni profile or is in Alumni group.
+    Redirects to dashboard_redirect with error message if access denied.
+    """
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            # Check if user has alumni profile OR is in Alumni group
+            if hasattr(request.user, 'alumni_profile') or request.user.groups.filter(name='Alumni').exists():
+                return view_func(request, *args, **kwargs)
+            else:
+                messages.error(request, "Access denied. Alumni privileges required.")
+                return redirect('dashboard_redirect')
+        except Exception as e:
+            import traceback
+            print(f"alumni_required decorator error: {e}")
+            print(traceback.format_exc())
+            messages.error(request, "Access denied. Alumni privileges required.")
+            return redirect('dashboard_redirect')
+    return _wrapped_view

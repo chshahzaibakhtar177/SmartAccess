@@ -12,6 +12,10 @@ from io import BytesIO
 import csv
 import xlsxwriter
 import json
+import logging
+from django.core.mail import send_mail
+import threading
+from django.conf import settings
 
 # Import from the modular models
 from .models import EntryLog
@@ -20,7 +24,71 @@ from students.models import Student
 # Import student_detail from students app
 from students.views import student_detail
 
+# Setup logging
+logger = logging.getLogger(__name__)
+
 # Attendance management views - migrated from legacy student app
+
+def send_entry_exit_email(student, action, timestamp):
+    """
+    Send email notification when student enters or exits university
+    
+    Args:
+        student: Student object
+        action: 'in' or 'out'
+        timestamp: datetime of the action
+    """
+    try:
+        # Generate student email
+        student_email = f"{student.roll_number}@{settings.STUDENT_EMAIL_DOMAIN}"
+        
+        # Determine action text
+        action_text = "entered" if action == 'in' else "exited from"
+        action_title = "Entry" if action == 'in' else "Exit"
+        
+        # Email subject
+        subject = f"University {action_title} Notification - {student.roll_number}"
+        
+        # Email message
+        message = f"""Dear {student.name},
+
+This is to inform you that you have {action_text} the university premises.
+
+Details:
+- Student Name: {student.name}
+- Roll Number: {student.roll_number}
+- Action: {action_title}
+- Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}
+- Location: University Main Gate
+
+If this was not you, please contact the security office immediately.
+
+Best regards,
+SmartAccess Attendance System
+CUI Sahiwal
+"""
+        
+        # Send email in background thread to avoid blocking response
+        def send_email_async():
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[student_email],
+                    fail_silently=False,
+                )
+                logger.info(f"Email sent to {student_email} for {action} action")
+            except Exception as email_error:
+                logger.error(f"Failed to send email in background: {email_error}")
+        
+        # Start email sending in background
+        email_thread = threading.Thread(target=send_email_async, daemon=True)
+        email_thread.start()
+        logger.info(f"Email queued for {student_email} for {action} action")
+        
+    except Exception as e:
+        logger.error(f"Failed to send email to {student.roll_number}: {str(e)}")
 
 def simulate_card_scan(request):
     """Simulate card scan view - migrated from legacy student app"""
@@ -215,6 +283,13 @@ def nfc_scan_api(request):
             # Save new entry
             EntryLog.objects.create(student=student, action=action)
             student.save()
+            
+            # Send email notification (non-blocking)
+            try:
+                send_entry_exit_email(student, action, now)
+            except Exception as e:
+                logger.error(f"Email notification failed: {str(e)}")
+                # Continue processing even if email fails
 
             return JsonResponse({
                 'success': True,

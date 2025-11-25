@@ -12,7 +12,7 @@ import json
 from .models import Event, EventCategory, EventRegistration, EventAttendance
 from students.models import Student
 from .forms import EventForm, EventSearchForm, EventCategoryForm
-from authentication.decorators import teacher_required
+from authentication.decorators import teacher_required, student_required
 
 # Events management views - migrated from legacy student app
 # Note: Due to time constraints, providing basic structure
@@ -75,16 +75,24 @@ def event_detail(request, event_id):
             # Get student profile
             student = Student.objects.get(user=request.user)
             
-            # Check if user is already registered
+            # Check if user is already registered (exclude cancelled registrations)
             try:
-                user_registration = EventRegistration.objects.get(event=event, student=student)
+                user_registration = EventRegistration.objects.get(
+                    event=event, 
+                    student=student
+                )
+                # If registration is cancelled, treat as not registered
+                if user_registration.status == 'cancelled':
+                    user_registration = None
             except EventRegistration.DoesNotExist:
                 pass
             
             # Check if user has attendance record
             if user_registration:
                 try:
-                    user_attendance = EventAttendance.objects.get(event=event, student=student)
+                    user_attendance = EventAttendance.objects.get(
+                        registration=user_registration
+                    )
                 except EventAttendance.DoesNotExist:
                     pass
             
@@ -105,6 +113,7 @@ def event_detail(request, event_id):
         'user_registration': user_registration,
         'user_attendance': user_attendance,
         'can_register': can_register,
+        'registration_percentage': round((event.registered_count / event.max_capacity) * 100, 2) if event.max_capacity > 0 else 0,
     }
     
     return render(request, 'events/event_detail.html', context)
@@ -151,15 +160,10 @@ def edit_event(request, event_id):
 
 
 @login_required
-@login_required
+@student_required
 def register_for_event(request, event_id):
     """Register student for an event"""
     event = get_object_or_404(Event, id=event_id)
-    
-    # Check if user is a student
-    if not request.user.groups.filter(name='Students').exists():
-        messages.error(request, "Only students can register for events.")
-        return redirect('event_detail', event_id=event.id)
     
     try:
         student = Student.objects.get(user=request.user)
@@ -175,8 +179,18 @@ def register_for_event(request, event_id):
     
     if existing_registration:
         if existing_registration.status == 'cancelled':
+            # Check if event is still open and has capacity
+            if not event.is_registration_open:
+                messages.error(request, "Registration for this event is closed.")
+                return redirect('event_detail', event_id=event.id)
+            
+            # Check capacity before reactivating
+            if event.registered_count >= event.max_capacity:
+                messages.error(request, "Event is full and registration is closed.")
+                return redirect('event_detail', event_id=event.id)
+            
             # Reactivate cancelled registration
-            existing_registration.status = 'pending'
+            existing_registration.status = 'confirmed'
             existing_registration.save()
             messages.success(request, "Your registration has been reactivated!")
         else:
@@ -216,15 +230,11 @@ def register_for_event(request, event_id):
     return redirect('event_detail', event_id=event.id)
 
 
-@login_required  
+@login_required
+@student_required
 def cancel_event_registration(request, event_id):
     """Cancel student's event registration"""
     event = get_object_or_404(Event, id=event_id)
-    
-    # Check if user is a student
-    if not request.user.groups.filter(name='Students').exists():
-        messages.error(request, "Only students can cancel event registrations.")
-        return redirect('event_detail', event_id=event.id)
     
     try:
         student = Student.objects.get(user=request.user)
@@ -255,15 +265,302 @@ def cancel_event_registration(request, event_id):
 
 @csrf_exempt
 def event_nfc_checkin_api(request):
-    """Event NFC checkin API - migrated from legacy student app"""
+    """NFC Event Check-in API for Raspberry Pi scanners"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            # Implementation would be migrated here
-            return JsonResponse({'success': True})
+            card_id = data.get('card_id')
+            event_id = data.get('event_id')
+            checkin_method = data.get('checkin_method', 'nfc')
+            
+            if not card_id or not event_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Missing card_id or event_id'
+                }, status=400)
+            
+            # Find student by card_id
+            try:
+                student = Student.objects.get(nfc_card_id=card_id)
+            except Student.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'No student found with card ID: {card_id}'
+                }, status=404)
+            
+            # Find event
+            try:
+                event = Event.objects.get(id=event_id, is_active=True)
+            except Event.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Event not found or inactive: {event_id}'
+                }, status=404)
+            
+            # Check if student is registered
+            try:
+                registration = EventRegistration.objects.get(
+                    event=event,
+                    student=student,
+                    status='confirmed'
+                )
+            except EventRegistration.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Student {student.roll_number} is not registered for this event'
+                }, status=400)
+            
+            # Check if already checked in
+            existing_attendance = EventAttendance.objects.filter(
+                event=event,
+                student=student
+            ).first()
+            
+            if existing_attendance:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Student {student.roll_number} already checked in at {existing_attendance.checkin_time.strftime("%H:%M:%S")}'
+                }, status=400)
+            
+            # Create attendance record
+            attendance = EventAttendance.objects.create(
+                event=event,
+                student=student,
+                registration=registration,
+                checkin_method=checkin_method
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Check-in successful',
+                'student_name': student.user.get_full_name() or student.user.username,
+                'roll_number': student.roll_number,
+                'event_title': event.title,
+                'checkin_time': attendance.checkin_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'registration_status': registration.status
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid JSON data'
+            }, status=400)
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    return JsonResponse({'success': False, 'error': 'Only POST method allowed'})
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Only POST requests allowed'
+    }, status=405)
+
+
+@csrf_exempt
+def event_nfc_checkout_api(request):
+    """NFC Event Check-out API for Raspberry Pi scanners"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            card_id = data.get('card_id')
+            event_id = data.get('event_id')
+            
+            if not card_id or not event_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Missing card_id or event_id'
+                }, status=400)
+            
+            # Find student by card_id
+            try:
+                student = Student.objects.get(nfc_card_id=card_id)
+            except Student.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'No student found with card ID: {card_id}'
+                }, status=404)
+            
+            # Find event
+            try:
+                event = Event.objects.get(id=event_id)
+            except Event.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Event not found: {event_id}'
+                }, status=404)
+            
+            # Find attendance record
+            try:
+                attendance = EventAttendance.objects.get(
+                    event=event,
+                    student=student
+                )
+            except EventAttendance.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Student {student.roll_number} has not checked in for this event'
+                }, status=400)
+            
+            # Check if already checked out
+            if attendance.checkout_time:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Student {student.roll_number} already checked out at {attendance.checkout_time.strftime("%H:%M:%S")}'
+                }, status=400)
+            
+            # Update checkout time
+            attendance.checkout_time = timezone.now()
+            attendance.save()  # This will trigger duration calculation in model
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Check-out successful',
+                'student_name': student.user.get_full_name() or student.user.username,
+                'roll_number': student.roll_number,
+                'event_title': event.title,
+                'checkin_time': attendance.checkin_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'checkout_time': attendance.checkout_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'duration_minutes': attendance.duration_minutes
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid JSON data'
+            }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Only POST requests allowed'
+    }, status=405)
+
+
+@csrf_exempt
+def active_events_api(request):
+    """API to get list of active events for scanner selection"""
+    if request.method == 'GET':
+        try:
+            # Get active events that are happening today or in the future
+            active_events = Event.objects.filter(
+                is_active=True,
+                start_datetime__gte=timezone.now() - timezone.timedelta(days=1)
+            ).order_by('start_datetime')
+            
+            events_data = []
+            for event in active_events:
+                events_data.append({
+                    'id': event.id,
+                    'title': event.title,
+                    'start_datetime': event.start_datetime.strftime('%Y-%m-%d %H:%M'),
+                    'venue': event.venue,
+                    'category': event.category.name if event.category else 'N/A',
+                    'registered_count': event.registered_count,
+                    'max_capacity': event.max_capacity,
+                    'requires_nfc_checkin': event.requires_nfc_checkin
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'events': events_data,
+                'count': len(events_data)
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Only GET requests allowed'
+    }, status=405)
+
+
+@csrf_exempt
+def nfc_attendance_api(request):
+    """
+    Simplified NFC attendance API - Auto-detects active event
+    Event must be within 30 min of start time and not ended
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Only POST method allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        card_id = data.get('card_id')
+        
+        if not card_id:
+            return JsonResponse({'success': False, 'error': 'Missing card_id'}, status=400)
+        
+        # Find student by NFC card ID
+        try:
+            student = Student.objects.get(nfc_card_id=card_id)
+        except Student.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Student not found. Register your NFC card first.'}, status=404)
+        
+        # Find active event (30 min before start to end time)
+        now = timezone.now()
+        active_event = Event.objects.filter(
+            is_active=True,
+            start_datetime__lte=now + timezone.timedelta(minutes=30),
+            end_datetime__gte=now
+        ).order_by('start_datetime').first()
+        
+        if not active_event:
+            return JsonResponse({
+                'success': False,
+                'error': 'No active event. Event must be within 30 min of start time.'
+            }, status=404)
+        
+        # Check if student is registered
+        try:
+            registration = EventRegistration.objects.get(
+                event=active_event,
+                student=student,
+                status='confirmed'
+            )
+        except EventRegistration.DoesNotExist:
+            return JsonResponse({
+                'success': False, 
+                'error': f'Not registered for "{active_event.title}"'
+            }, status=403)
+        
+        # Mark attendance (prevent duplicates)
+        attendance, created = EventAttendance.objects.get_or_create(
+            registration=registration,
+            defaults={
+                'event': active_event,
+                'student': student,
+                'checkin_method': 'nfc'
+            }
+        )
+        
+        if not created:
+            return JsonResponse({
+                'success': False,
+                'error': f'Already present at {attendance.checkin_time.strftime("%I:%M %p")}'
+            }, status=400)
+        
+        return JsonResponse({
+            'success': True,
+            'student_name': f"{student.user.first_name} {student.user.last_name}",
+            'roll_number': student.roll_number,
+            'event_title': active_event.title,
+            'attendance_time': attendance.checkin_time.strftime('%I:%M %p'),
+            'event_time': f"{active_event.start_datetime.strftime('%I:%M %p')} - {active_event.end_datetime.strftime('%I:%M %p')}"
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # Category Management Views
@@ -524,3 +821,29 @@ def remove_attendance(request, event_id, student_id):
         messages.error(request, "No attendance record found")
     
     return redirect('event_registrations', event_id=event_id)
+
+
+@login_required
+@teacher_required
+def delete_event(request, event_id):
+    """Delete an event"""
+    event = get_object_or_404(Event, id=event_id)
+    
+    # Check if there are any confirmed registrations
+    confirmed_registrations = event.registrations.filter(status='confirmed').count()
+    
+    if request.method == 'POST':
+        if confirmed_registrations > 0:
+            messages.error(request, f'Cannot delete event "{event.title}" because it has {confirmed_registrations} confirmed registrations.')
+        else:
+            event_title = event.title
+            event.delete()
+            messages.success(request, f'Event "{event_title}" deleted successfully!')
+        return redirect('teacher_event_dashboard')
+    
+    context = {
+        'event': event,
+        'confirmed_registrations': confirmed_registrations,
+        'page_title': 'Delete Event'
+    }
+    return render(request, 'events/event_confirm_delete.html', context)

@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Route Management - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="fas fa-route"></i> Route Management</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{% url 'transportation:route_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Route
+            </a>
+            <a href="{% url 'transportation:dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <input type="text" class="form-control" name="search" 
+                           placeholder="Search route name or area..." 
+                           value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" name="status">
+                        <option value="">All Status</option>
+                        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Routes List -->
+    <div class="row">
+        {% if page_obj %}
+            {% for route in page_obj %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-route text-primary"></i> {{ route.name }}
+                            </h5>
+                            <span class="badge {% if route.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if route.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+
+                        <div class="mb-2">
+                            <small class="text-muted">Distance:</small>
+                            <div><i class="fas fa-road"></i> {{ route.distance }} km</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <small class="text-muted">Est. Time:</small>
+                            <div><i class="fas fa-clock"></i> {{ route.estimated_time }}</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <small class="text-muted">Stops:</small>
+                            <div><i class="fas fa-map-marker-alt"></i> {{ route.stops|default:"0" }} locations</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <small class="text-muted">Buses Assigned:</small>
+                            <div>
+                                <i class="fas fa-bus"></i> 
+                                <strong>{{ route.buses.count }}</strong> bus{{ route.buses.count|pluralize:"es" }}
+                            </div>
+                        </div>
+
+                        {% if route.description %}
+                        <div class="mb-3">
+                            <small class="text-muted">Description:</small>
+                            <p class="small mb-0">{{ route.description|truncatewords:15 }}</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'transportation:route_detail' route.id %}" 
+                               class="btn btn-sm btn-info flex-fill">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'transportation:route_edit' route.id %}" 
+                               class="btn btn-sm btn-warning flex-fill">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'transportation:route_delete' route.id %}" 
+                               class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No routes found. 
+                    <a href="{% url 'transportation:route_create' %}">Add the first route</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Route pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Previous</a>
+                </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Statistics Summary -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <h4>{{ total_routes }}</h4>
+                    <small class="text-muted">Total Routes</small>
+                </div>
+                <div class="col-md-4">
+                    <h4 class="text-success">{{ active_routes }}</h4>
+                    <small class="text-muted">Active Routes</small>
+                </div>
+                <div class="col-md-4">
+                    <h4 class="text-secondary">{{ inactive_routes }}</h4>
+                    <small class="text-muted">Inactive Routes</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

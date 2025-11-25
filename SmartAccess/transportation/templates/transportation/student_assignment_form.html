@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} Student Assignment - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus"></i> {{ action }} Student Bus Assignment
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i> {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        {% if preselected_bus %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> 
+                                <strong>Assigning student to:</strong> Bus {{ preselected_bus.bus_number }} 
+                                ({{ preselected_bus.route.route_name }} - {{ preselected_bus.available_seats }} seats available)
+                            </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Student Selection -->
+                            <div class="col-12 mb-4">
+                                <label for="{{ form.student.id_for_label }}" class="form-label">
+                                    Select Student <span class="text-danger">*</span>
+                                </label>
+                                {{ form.student }}
+                                {% if form.student.errors %}
+                                    <div class="text-danger small mt-1">{{ form.student.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-info-circle"></i> Only students without bus assignments are shown
+                                </small>
+                            </div>
+
+                            <!-- Bus Selection -->
+                            <div class="col-12 mb-4">
+                                <label for="{{ form.bus.id_for_label }}" class="form-label">
+                                    Select Bus <span class="text-danger">*</span>
+                                </label>
+                                {{ form.bus }}
+                                {% if form.bus.errors %}
+                                    <div class="text-danger small mt-1">{{ form.bus.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-info-circle"></i> Each bus has its assigned route. Select the bus that serves the student's area.
+                                </small>
+                            </div>
+
+                            <!-- Pickup Location -->
+                            <div class="col-12 mb-4">
+                                <label for="{{ form.pickup_location.id_for_label }}" class="form-label">
+                                    Pickup/Drop Location <span class="text-danger">*</span>
+                                </label>
+                                {{ form.pickup_location }}
+                                {% if form.pickup_location.errors %}
+                                    <div class="text-danger small mt-1">{{ form.pickup_location.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-info-circle"></i> Specify the exact stop or landmark where the student will be picked up/dropped off
+                                </small>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="col-12 mb-3">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                    Additional Notes (Optional)
+                                </label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <div class="text-danger small mt-1">{{ form.notes.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Any special instructions, contact information, or remarks</small>
+                            </div>
+                        </div>
+
+                        <!-- Info Alert -->
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-lightbulb"></i> Important Information:</h6>
+                            <ul class="mb-0 small">
+                                <li>Each student can only be assigned to one bus at a time</li>
+                                <li>The selected bus must have available capacity</li>
+                                <li>Assignment can be modified or removed later if needed</li>
+                                <li>Parents will be notified of the bus assignment</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <a href="{% url 'transportation:student_assignment_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ action }} Assignment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if assignment %}
+            <!-- Current Assignment Details -->
+            <div class="card mt-3 shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0">Current Assignment Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Student:</strong> {{ assignment.student.user.get_full_name }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Student ID:</strong> {{ assignment.student.student_id }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Current Bus:</strong> {{ assignment.bus.bus_number }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Assigned Since:</strong> {{ assignment.assigned_at|date:"F d, Y" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+{{ form.media }}
+</style>
+{% endblock %}

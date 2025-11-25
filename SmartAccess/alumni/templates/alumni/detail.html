@@ -149,20 +149,20 @@
                                 {% for participation in event_participations %}
                                 <tr>
                                     <td>
-                                        <strong>{{ participation.event.name }}</strong>
+                                        <strong>{{ participation.event.title }}</strong>
                                         {% if participation.event.category %}
                                             <br><small class="text-muted">{{ participation.event.category.name }}</small>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {{ participation.event.event_date|date:"M d, Y" }}<br>
-                                        <small class="text-muted">{{ participation.event.event_time|time:"g:i A" }}</small>
+                                        {{ participation.event.start_datetime|date:"M d, Y" }}<br>
+                                        <small class="text-muted">{{ participation.event.start_datetime|time:"g:i A" }}</small>
                                     </td>
                                     <td>{{ participation.participation_date|date:"M d, Y" }}</td>
                                     <td>
-                                        {% if participation.event.event_date > today %}
+                                        {% if participation.event.start_datetime.date > today %}
                                             <span class="badge bg-primary">Upcoming</span>
-                                        {% elif participation.event.event_date == today %}
+                                        {% elif participation.event.start_datetime.date == today %}
                                             <span class="badge bg-warning">Today</span>
                                         {% else %}
                                             <span class="badge bg-success">Attended</span>

@@ -1,0 +1,130 @@
+# NFC Event Attendance System - How It Works
+
+## System Overview
+Single scanner that automatically detects which event is happening and marks students present.
+
+## How It Works
+
+### 1. **Scanner Script** (`nfc_event_scanner.py`)
+- Runs on Raspberry Pi with NFC reader
+- Continuously scans for NFC cards
+- Sends card ID to Django server
+- Server automatically finds the active event
+
+### 2. **Backend Logic** (Django API)
+When a card is scanned:
+1. Find student by card ID
+2. Find active event (30 min before start → end time)
+3. Check if student is registered  
+4. Mark attendance (prevent duplicates)
+
+### 3. **Event Detection**
+Event is considered "active" when:
+- **Start Window**: 30 minutes before start time
+- **End Window**: Exactly at end time
+- **Status**: `is_active=True`
+
+Example:
+```
+Event: "Tech Seminar"
+Start: 2:00 PM
+End: 4:00 PM
+
+Scanner accepts cards from: 1:30 PM to 4:00 PM
+```
+
+## Setup
+
+### Hardware
+```
+Raspberry Pi + PN532 NFC Reader (I2C)
+Connect: VCC→3.3V, GND→GND, SDA→GPIO2, SCL→GPIO3
+```
+
+### Software
+```bash
+# On Raspberry Pi
+pip3 install adafruit-circuitpython-pn532 requests
+
+# Edit script
+nano /path/to/nfc_event_scanner.py
+# Change: DJANGO_SERVER = "http://YOUR_SERVER_IP:8000"
+
+# Run
+sudo python3 nfc_event_scanner.py
+```
+
+## API Endpoint
+
+**URL**: `POST /events/api/nfc-attendance/`
+
+**Request**:
+```json
+{
+  "card_id": "a1b2c3d4"
+}
+```
+
+**Success Response**:
+```json
+{
+  "success": true,
+  "student_name": "John Doe",
+  "roll_number": "BCS-001",
+  "event_title": "Tech Seminar",
+  "attendance_time": "02:15 PM",
+  "event_time": "02:00 PM - 04:00 PM"
+}
+```
+
+**Error Responses**:
+- No active event: `"No active event. Event must be within 30 min of start time."`
+- Not registered: `"Not registered for <Event Name>"`
+- Already present: `"Already present at 02:15 PM"`
+
+## Usage
+
+1. **Before Event**: Students register online
+2. **30 min before start**: Scanner becomes active
+3. **Students arrive**: Scan NFC card at entrance
+4. **Automatic**: System finds event, checks registration, marks present
+5. **After event ends**: Scanner stops accepting cards
+
+## Testing Without Hardware
+
+```bash
+# Test API with curl
+curl -X POST http://127.0.0.1:8000/events/api/nfc-attendance/ \
+  -H "Content-Type: application/json" \
+  -d '{"card_id":"test123"}'
+```
+
+## Configuration
+
+### Scanner Settings
+```python
+DJANGO_SERVER = "http://127.0.0.1:8000"  # Your server
+SCAN_COOLDOWN = 3  # Seconds between same card scans
+```
+
+### Event Requirements
+- Event must have `is_active=True`
+- Students must have `nfc_card_id` in database
+- Students must be registered with `status='confirmed'`
+
+## File Structure
+```
+script/
+  └── nfc_event_scanner.py  (Single scanner script)
+
+events/
+  ├── views.py  (nfc_attendance_api function)
+  └── urls.py   (api/nfc-attendance/ route)
+```
+
+## Advantages
+✅ No manual event selection needed  
+✅ Automatic time-based detection  
+✅ Prevents duplicate scans  
+✅ Works for multiple events per day  
+✅ Simple one-script deployment

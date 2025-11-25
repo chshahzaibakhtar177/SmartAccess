@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h3 mb-0 text-gray-800">Cancel Event Registration</h1>
-        <p class="text-muted">Cancel your registration for {{ event.name }}</p>
+        <p class="text-muted">Cancel your registration for {{ event.title }}</p>
     </div>
     <div>
         <a href="{% url 'alumni:events' %}" class="btn btn-outline-secondary">
@@ -29,7 +29,7 @@
                 <div class="row mb-4">
                     <div class="col-md-6">
                         {% if event.image %}
-                            <img src="{{ event.image.url }}" class="img-fluid rounded" alt="{{ event.name }}">
+                            <img src="{{ event.image.url }}" class="img-fluid rounded" alt="{{ event.title }}">
                         {% else %}
                             <div class="bg-secondary rounded d-flex align-items-center justify-content-center" 
                                  style="height: 200px;">
@@ -38,11 +38,11 @@
                         {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <h4 class="mb-3">{{ event.name }}</h4>
+                        <h4 class="mb-3">{{ event.title }}</h4>
                         
                         <div class="mb-2">
                             <i class="fas fa-calendar text-primary"></i>
-                            <strong>Date:</strong> {{ event.event_date|date:"F d, Y" }}
+                            <strong>Date:</strong> {{ event.start_datetime|date:"F d, Y" }}
                         </div>
                         
                         <div class="mb-2">
@@ -50,10 +50,10 @@
                             <strong>Time:</strong> {{ event.event_time|time:"g:i A" }}
                         </div>
                         
-                        {% if event.location %}
+                        {% if event.venue %}
                         <div class="mb-2">
                             <i class="fas fa-map-marker-alt text-primary"></i>
-                            <strong>Location:</strong> {{ event.location }}
+                            <strong>Location:</strong> {{ event.venue }}
                         </div>
                         {% endif %}
                         
@@ -75,7 +75,7 @@
                 <div class="alert alert-warning">
                     <h6><i class="fas fa-exclamation-triangle"></i> Important Information:</h6>
                     <ul class="mb-0">
-                        <li>Your registration for "{{ event.name }}" will be permanently cancelled</li>
+                        <li>Your registration for "{{ event.title }}" will be permanently cancelled</li>
                         <li>You can re-register later if spots are still available</li>
                         {% if event.registration_fee and event.registration_fee > 0 %}
                         <li>Refund policies may apply - check event terms and conditions</li>
@@ -103,7 +103,7 @@
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="confirm_cancellation" required>
                             <label class="form-check-label" for="confirm_cancellation">
-                                I understand that cancelling my registration for "{{ event.name }}" is permanent 
+                                I understand that cancelling my registration for "{{ event.title }}" is permanent 
                                 and I will need to re-register if I change my mind.
                             </label>
                         </div>
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Form submission confirmation
     form.addEventListener('submit', function(e) {
-        const eventName = '{{ event.name|escapejs }}';
+        const eventName = '{{ event.title|escapejs }}';
         if (!confirm(`Are you absolutely sure you want to cancel your registration for "${eventName}"?\n\nThis action cannot be undone.`)) {
             e.preventDefault();
         } else {

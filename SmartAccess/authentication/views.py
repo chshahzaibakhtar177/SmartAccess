@@ -18,6 +18,9 @@ def dashboard_redirect(request):
         return redirect('admin_dashboard')
     elif user.groups.filter(name='Teachers').exists():
         return redirect('teacher_dashboard')
+    # Check Alumni before Students (alumni may have both groups)
+    elif user.groups.filter(name='Alumni').exists() or hasattr(user, 'alumni_profile'):
+        return redirect('alumni:dashboard')
     elif user.groups.filter(name='Students').exists():
         return redirect('student_dashboard')
     else:

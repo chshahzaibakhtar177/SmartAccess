@@ -116,13 +116,13 @@
                 <div class="card-body">
                     {% if book.is_available %}
                         {% if not user.is_staff %}
-                            <div class="d-grid gap-2 mb-3">
-                                <a href="{% url 'borrow_book' book.pk %}" class="btn btn-success">
-                                    <i class="fas fa-hand-holding me-2"></i>Borrow This Book
-                                </a>
-                                <a href="{% url 'reserve_book' book.pk %}" class="btn btn-outline-primary">
-                                    <i class="fas fa-bookmark me-2"></i>Reserve for Later
-                                </a>
+                            <div class="alert alert-success mb-3">
+                                <i class="fas fa-check-circle me-2"></i>
+                                This book is available.
+                            </div>
+                            <div class="alert alert-info small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                To borrow this book, please visit the library desk.
                             </div>
                         {% else %}
                             <div class="alert alert-success">
@@ -135,26 +135,18 @@
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             This book is currently borrowed.
                         </div>
-                        {% if not user.is_staff %}
-                            <div class="d-grid">
-                                <a href="{% url 'reserve_book' book.pk %}" class="btn btn-outline-primary">
-                                    <i class="fas fa-bookmark me-2"></i>Reserve for Later
-                                </a>
-                            </div>
-                        {% endif %}
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Current Status Card -->
-            {% if not book.is_available %}
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <h6 class="mb-0">Current Status</h6>
-                </div>
-                <div class="card-body">
-                    {% with current_borrow=book.current_borrow %}
-                    {% if current_borrow %}
+            <!-- Current Status Card - Teacher Only -->
+            {% if current_borrow %}
+                {% if user.is_staff or user.teacher_profile %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0">Current Status</h6>
+                    </div>
+                    <div class="card-body">
                         <div class="d-flex align-items-center mb-3">
                             {% if current_borrow.student.photo %}
                                 <img src="{{ current_borrow.student.photo.url }}" 
@@ -190,13 +182,13 @@
                                 </div>
                             {% endif %}
                         </div>
-                    {% endif %}
-                    {% endwith %}
+                    </div>
                 </div>
-            </div>
+                {% endif %}
             {% endif %}
 
-            <!-- Borrowing History -->
+            <!-- Borrowing History - Teacher Only -->
+            {% if user.is_staff or user.teacher_profile %}
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white">
                     <h6 class="mb-0">Borrowing History</h6>
@@ -238,6 +230,7 @@
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 

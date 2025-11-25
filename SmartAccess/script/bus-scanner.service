@@ -1,0 +1,37 @@
+[Unit]
+Description=Bus Transportation NFC Scanner Service
+Documentation=file:///home/pi/bus_scanner/BUS_SCANNER_INSTALLATION.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/bus_scanner
+Environment="PYTHONUNBUFFERED=1"
+
+# Main scanner script
+ExecStart=/usr/bin/python3 /home/pi/bus_scanner/nfc_scanner_bus.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bus-scanner
+
+# Resource limits (optional)
+MemoryMax=256M
+CPUQuota=50%
+
+# Security hardening (optional)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

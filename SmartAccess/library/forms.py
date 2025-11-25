@@ -10,7 +10,7 @@ class BookForm(forms.ModelForm):
         model = Book
         fields = ['isbn', 'title', 'author', 'publisher', 'publication_year', 'edition', 
                  'category', 'pages', 'location', 'copy_number', 'status', 'price', 
-                 'cover_image', 'nfc_tag_uid']
+                 'cover_image']
         widgets = {
             'isbn': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -60,10 +60,6 @@ class BookForm(forms.ModelForm):
             'cover_image': forms.FileInput(attrs={
                 'class': 'form-control',
                 'accept': 'image/*'
-            }),
-            'nfc_tag_uid': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'NFC Tag UID (optional)'
             })
         }
     
@@ -77,12 +73,6 @@ class BookForm(forms.ModelForm):
             raise forms.ValidationError("ISBN must be exactly 13 digits")
         
         return isbn
-    
-    def clean_nfc_tag_uid(self):
-        nfc_uid = self.cleaned_data['nfc_tag_uid']
-        if nfc_uid and not re.match(r'^[A-Fa-f0-9]+$', nfc_uid):
-            raise forms.ValidationError("NFC UID must be hexadecimal")
-        return nfc_uid
 
 
 class BookCategoryForm(forms.ModelForm):

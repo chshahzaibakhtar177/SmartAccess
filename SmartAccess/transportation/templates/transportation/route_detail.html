@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ route.name }} Details - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-route text-primary"></i> {{ route.name }}</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'transportation:route_edit' route.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="{% url 'transportation:route_delete' route.id %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+            <a href="{% url 'transportation:route_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Route Information -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Route Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Status</small>
+                        <div>
+                            <span class="badge {% if route.is_active %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+                                {% if route.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Distance</small>
+                        <div><i class="fas fa-road"></i> {{ route.distance|default:"N/A" }} km</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Estimated Time</small>
+                        <div><i class="fas fa-clock"></i> {{ route.estimated_time|default:"N/A" }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">Start Location</small>
+                        <div><i class="fas fa-map-marker-alt text-success"></i> {{ route.start_location|default:"N/A" }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted">End Location</small>
+                        <div><i class="fas fa-map-marker-alt text-danger"></i> {{ route.end_location|default:"N/A" }}</div>
+                    </div>
+
+                    {% if route.stops %}
+                    <div class="mb-3">
+                        <small class="text-muted">Stops</small>
+                        <div class="small">{{ route.stops }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if route.description %}
+                    <div class="mb-0">
+                        <small class="text-muted">Description</small>
+                        <div class="small">{{ route.description }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Assigned Buses -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-bus"></i> Assigned Buses ({{ assigned_buses.count }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if assigned_buses %}
+                        <div class="list-group">
+                            {% for bus in assigned_buses %}
+                            <a href="{% url 'transportation:bus_detail' bus.id %}" 
+                               class="list-group-item list-group-item-action">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="fas fa-bus text-primary"></i> {{ bus.bus_number }}
+                                        </h6>
+                                        <small class="text-muted">
+                                            Driver: {{ bus.driver_name }} | 
+                                            Capacity: {{ bus.current_student_count }}/{{ bus.capacity }}
+                                        </small>
+                                    </div>
+                                    <span class="badge 
+                                        {% if bus.status == 'active' %}bg-success
+                                        {% elif bus.status == 'maintenance' %}bg-warning
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ bus.get_status_display }}
+                                    </span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> No buses assigned to this route yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Route Statistics -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Route Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h4>{{ assigned_buses.count }}</h4>
+                            <small class="text-muted">Buses Assigned</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4>{{ total_students }}</h4>
+                            <small class="text-muted">Total Students</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4>{{ total_capacity }}</h4>
+                            <small class="text-muted">Total Capacity</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4>{{ route.distance|default:"0" }} km</h4>
+                            <small class="text-muted">Route Distance</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Information (if BusSchedule model exists) -->
+    {% if schedules %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Schedule</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Bus</th>
+                                    <th>Day</th>
+                                    <th>Departure Time</th>
+                                    <th>Arrival Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in schedules %}
+                                <tr>
+                                    <td>{{ schedule.bus.bus_number }}</td>
+                                    <td>{{ schedule.day }}</td>
+                                    <td>{{ schedule.departure_time }}</td>
+                                    <td>{{ schedule.arrival_time }}</td>
+                                    <td>
+                                        <span class="badge {% if schedule.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {% if schedule.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

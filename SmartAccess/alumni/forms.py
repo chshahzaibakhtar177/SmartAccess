@@ -87,11 +87,12 @@ class AlumniProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = Alumni
         fields = [
-            'current_job_title', 'current_company', 'industry',
+            'profile_photo', 'current_job_title', 'current_company', 'industry',
             'linkedin_profile', 'phone_number', 'alternative_email',
             'current_address', 'achievements', 'is_public_profile'
         ]
         widgets = {
+            'profile_photo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'current_job_title': forms.TextInput(attrs={'class': 'form-control'}),
             'current_company': forms.TextInput(attrs={'class': 'form-control'}),
             'industry': forms.TextInput(attrs={'class': 'form-control'}),
@@ -194,13 +195,4 @@ class ConvertStudentForm(forms.Form):
             'max': '4.0',
             'placeholder': 'Final GPA (optional)'
         })
-    )
-    
-    create_alumni_profile = forms.BooleanField(
-        required=False,
-        initial=True,
-        widget=forms.CheckboxInput(attrs={
-            'class': 'form-check-input'
-        }),
-        help_text='Create alumni profile for networking and events'
     )

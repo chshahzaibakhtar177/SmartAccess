@@ -76,6 +76,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'SmartAccess.context_processors.raspberry_pi_config',  # Custom: Raspberry Pi config
             ],
         },
     },
@@ -174,16 +175,28 @@ CACHES = {
 }
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
-# For production:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your-email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your-app-password'
+# For development (prints to console):
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# For production (sends actual emails):
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'shahzaib.eraviya@gmail.com'
+EMAIL_HOST_PASSWORD = 'ngzu iqvu ewwd hlwr'
+DEFAULT_FROM_EMAIL = 'SmartAccess Transport <shahzaib.eraviya@gmail.com>'
+
+# Student email domain
+STUDENT_EMAIL_DOMAIN = 'students.cuisahiwal.edu.pk'
 
 # Session Settings
 SESSION_COOKIE_AGE = 3600  # 1 hour in seconds
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_SAVE_EVERY_REQUEST = True
+
+# Raspberry Pi NFC Scanner Configuration
+# Set this to your Raspberry Pi's IP address where Flask server is running
+RASPBERRY_PI_IP = '172.20.10.3'
+RASPBERRY_PI_PORT = '5000'
+RASPBERRY_PI_URL = f'http://{RASPBERRY_PI_IP}:{RASPBERRY_PI_PORT}'

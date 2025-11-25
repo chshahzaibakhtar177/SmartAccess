@@ -5,17 +5,102 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
+from django.core.mail import send_mail
+from django.conf import settings
 from datetime import timedelta
 import json
+import logging
+import threading
 
-# Import from the modular models
-from transportation.models import Bus, Route, TransportLog
-from authentication.decorators import teacher_required
+from .models import Bus, Route, TransportLog, StudentBusAssignment
+from .forms import BusForm, RouteForm, StudentBusAssignmentForm
+from authentication.decorators import teacher_required, student_required
 from students.models import Student
 from teachers.models import Teacher
 
+# Setup logging
+logger = logging.getLogger(__name__)
 
-# Transportation Management Views
+
+def send_transport_email(user, user_type, action, bus, route, timestamp, location):
+    """
+    Send email notification when user boards or alights from bus
+    
+    Args:
+        user: User object (Student or Teacher)
+        user_type: 'student' or 'teacher'
+        action: 'board' or 'alight'
+        bus: Bus object
+        route: Route object (can be None)
+        timestamp: datetime of the action
+        location: boarding/alighting location
+    """
+    try:
+        # Generate email address
+        if user_type == 'student':
+            student = user.student_profile
+            email_address = f"{student.roll_number}@{settings.STUDENT_EMAIL_DOMAIN}"
+            user_name = student.name
+            user_id = student.roll_number
+        else:
+            teacher = user.teacher_profile
+            email_address = user.email  # Teachers use their account email
+            user_name = teacher.name
+            user_id = teacher.employee_id
+        
+        # Determine action text
+        action_text = "boarded" if action == 'board' else "alighted from"
+        action_title = "Bus Boarding" if action == 'board' else "Bus Alighting"
+        
+        # Email subject
+        subject = f"Transportation {action_title} Notification - {user_id}"
+        
+        # Email message
+        route_info = f"Route: {route.name}" if route else "Route: Not assigned"
+        message = f"""
+Dear {user_name},
+
+This is to confirm that you have {action_text} the university bus.
+
+Details:
+- Bus Number: {bus.bus_number}
+- {route_info}
+- Driver: {bus.driver_name}
+- Location: {location}
+- Time: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}
+- User Type: {user_type.title()}
+
+If this was not you, please contact the transport office immediately.
+
+Best regards,
+SmartAccess Transportation System
+CUI Sahiwal
+"""
+        
+        # Send email in background thread to avoid blocking response
+        def send_email_async():
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email_address],
+                    fail_silently=False,
+                )
+                logger.info(f"Transport email sent to {email_address} for {action} action")
+            except Exception as email_error:
+                logger.error(f"Failed to send transport email in background: {email_error}")
+        
+        # Start email sending in background
+        email_thread = threading.Thread(target=send_email_async, daemon=True)
+        email_thread.start()
+        logger.info(f"Transport email queued for {email_address} for {action} action")
+        
+    except Exception as e:
+        logger.error(f"Failed to queue transport email: {str(e)}")
+
+
+# ============ TEACHER VIEWS ============
 
 @login_required
 @teacher_required
@@ -26,6 +111,7 @@ def transportation_dashboard(request):
     # Get statistics
     total_buses = Bus.objects.filter(is_active=True).count()
     total_routes = Route.objects.filter(status='active').count()
+    total_assigned_students = StudentBusAssignment.objects.filter(is_active=True).count()
     today_logs = TransportLog.objects.filter(boarding_time__date=today).count()
     
     # Recent transport logs
@@ -35,7 +121,8 @@ def transportation_dashboard(request):
     
     # Bus utilization data
     bus_utilization = Bus.objects.filter(is_active=True).annotate(
-        today_usage=Count('transport_logs', filter=Q(transport_logs__boarding_time__date=today))
+        today_usage=Count('transport_logs', filter=Q(transport_logs__boarding_time__date=today)),
+        assigned_students_count=Count('assigned_students', filter=Q(assigned_students__is_active=True))
     ).order_by('-today_usage')[:5]
     
     # Popular routes
@@ -46,6 +133,7 @@ def transportation_dashboard(request):
     context = {
         'total_buses': total_buses,
         'total_routes': total_routes,
+        'total_assigned_students': total_assigned_students,
         'today_logs': today_logs,
         'recent_logs': recent_logs,
         'bus_utilization': bus_utilization,
@@ -58,100 +146,342 @@ def transportation_dashboard(request):
 
 @login_required
 @teacher_required
-def bus_management(request):
-    """Bus management view - list, add, edit buses"""
-    buses = Bus.objects.all().order_by('bus_number')
+def bus_list(request):
+    """List all buses"""
+    buses = Bus.objects.all().annotate(
+        assigned_students_count=Count('assigned_students', filter=Q(assigned_students__is_active=True))
+    ).order_by('bus_number')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        buses = buses.filter(
+            Q(bus_number__icontains=search_query) |
+            Q(driver_name__icontains=search_query) |
+            Q(route__icontains=search_query)
+        )
+    
+    # Calculate statistics
+    total_buses = Bus.objects.count()
+    active_buses = Bus.objects.filter(is_active=True).count()
+    inactive_buses = Bus.objects.filter(is_active=False).count()
     
     # Pagination
     paginator = Paginator(buses, 10)
     page_number = request.GET.get('page')
-    buses = paginator.get_page(page_number)
+    page_obj = paginator.get_page(page_number)
     
     context = {
-        'buses': buses,
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'total_buses': total_buses,
+        'active_buses': active_buses,
+        'inactive_buses': inactive_buses,
+        'maintenance_buses': 0,  # Bus model doesn't have maintenance status
     }
     
-    return render(request, 'transportation/bus_management.html', context)
+    return render(request, 'transportation/bus_list.html', context)
 
 
 @login_required
 @teacher_required
-def add_bus(request):
-    """Add a new bus"""
+def bus_create(request):
+    """Create a new bus"""
     if request.method == 'POST':
-        bus_number = request.POST.get('bus_number')
-        driver_name = request.POST.get('driver_name')
-        driver_contact = request.POST.get('driver_contact')
-        capacity = request.POST.get('capacity')
-        route = request.POST.get('route')
-        
-        if Bus.objects.filter(bus_number=bus_number).exists():
-            messages.error(request, 'Bus number already exists!')
-        else:
-            Bus.objects.create(
-                bus_number=bus_number,
-                driver_name=driver_name,
-                driver_contact=driver_contact,
-                capacity=int(capacity),
-                route=route
-            )
-            messages.success(request, 'Bus added successfully!')
-            return redirect('transportation:bus_management')
+        form = BusForm(request.POST)
+        if form.is_valid():
+            bus = form.save()
+            messages.success(request, f'Bus {bus.bus_number} added successfully!')
+            return redirect('transportation:bus_list')
+    else:
+        form = BusForm()
     
-    return render(request, 'transportation/add_bus.html')
+    context = {'form': form, 'action': 'Create'}
+    return render(request, 'transportation/bus_form.html', context)
 
 
 @login_required
 @teacher_required
-def route_management(request):
-    """Route management view - list, add, edit routes"""
-    routes = Route.objects.all().order_by('route_name')
+def bus_edit(request, pk):
+    """Edit an existing bus"""
+    bus = get_object_or_404(Bus, pk=pk)
+    
+    if request.method == 'POST':
+        form = BusForm(request.POST, instance=bus)
+        if form.is_valid():
+            bus = form.save()
+            messages.success(request, f'Bus {bus.bus_number} updated successfully!')
+            return redirect('transportation:bus_detail', pk=bus.pk)
+    else:
+        form = BusForm(instance=bus)
+    
+    context = {'form': form, 'bus': bus, 'action': 'Edit'}
+    return render(request, 'transportation/bus_form.html', context)
+
+
+@login_required
+@teacher_required
+def bus_delete(request, pk):
+    """Delete a bus"""
+    bus = get_object_or_404(Bus, pk=pk)
+    
+    # Check if bus has assigned students
+    assigned_count = StudentBusAssignment.objects.filter(bus=bus, is_active=True).count()
+    if assigned_count > 0:
+        messages.error(request, f'Cannot delete bus {bus.bus_number}. It has {assigned_count} assigned student(s). Please reassign them first.')
+        return redirect('transportation:bus_detail', pk=pk)
+    
+    bus_number = bus.bus_number
+    bus.delete()
+    messages.success(request, f'Bus {bus_number} deleted successfully!')
+    return redirect('transportation:bus_list')
+
+
+@login_required
+@teacher_required
+def bus_detail(request, pk):
+    """View bus details"""
+    bus = get_object_or_404(Bus, pk=pk)
+    assigned_students = StudentBusAssignment.objects.filter(
+        bus=bus
+    ).select_related('student', 'student__user').order_by('student__roll_number')
+    
+    # Recent logs for this bus
+    recent_logs = TransportLog.objects.filter(
+        bus=bus
+    ).select_related('user', 'route').order_by('-boarding_time')[:10]
+    
+    # Calculate total trips this month
+    from datetime import datetime
+    this_month = datetime.now().date().replace(day=1)
+    total_trips = TransportLog.objects.filter(
+        bus=bus,
+        boarding_time__date__gte=this_month
+    ).count()
+    
+    context = {
+        'bus': bus,
+        'assigned_students': assigned_students,
+        'recent_logs': recent_logs,
+        'total_trips': total_trips,
+    }
+    return render(request, 'transportation/bus_detail.html', context)
+
+
+# ============ ROUTE VIEWS ============
+
+@login_required
+@teacher_required
+def route_list(request):
+    """List all routes"""
+    routes = Route.objects.all().annotate(
+        assigned_students_count=Count('assigned_students', filter=Q(assigned_students__is_active=True))
+    ).order_by('route_name')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        routes = routes.filter(
+            Q(route_name__icontains=search_query) |
+            Q(start_location__icontains=search_query) |
+            Q(end_location__icontains=search_query)
+        )
     
     # Pagination
     paginator = Paginator(routes, 10)
     page_number = request.GET.get('page')
-    routes = paginator.get_page(page_number)
+    page_obj = paginator.get_page(page_number)
     
     context = {
-        'routes': routes,
+        'page_obj': page_obj,
+        'search_query': search_query,
     }
     
-    return render(request, 'transportation/route_management.html', context)
+    return render(request, 'transportation/route_list.html', context)
 
 
 @login_required
 @teacher_required
-def add_route(request):
-    """Add a new route"""
+def route_create(request):
+    """Create a new route"""
     if request.method == 'POST':
-        route_name = request.POST.get('route_name')
-        start_location = request.POST.get('start_location')
-        end_location = request.POST.get('end_location')
-        total_distance = request.POST.get('total_distance')
-        estimated_hours = request.POST.get('estimated_hours', '0')
-        estimated_minutes = request.POST.get('estimated_minutes', '0')
-        
-        # Create duration object
-        estimated_time = timedelta(
-            hours=int(estimated_hours or 0),
-            minutes=int(estimated_minutes or 0)
-        )
-        
-        if Route.objects.filter(route_name=route_name).exists():
-            messages.error(request, 'Route name already exists!')
-        else:
-            Route.objects.create(
-                route_name=route_name,
-                start_location=start_location,
-                end_location=end_location,
-                total_distance=float(total_distance),
-                estimated_time=estimated_time
-            )
-            messages.success(request, 'Route added successfully!')
-            return redirect('transportation:route_management')
+        form = RouteForm(request.POST)
+        if form.is_valid():
+            route = form.save()
+            messages.success(request, f'Route "{route.route_name}" created successfully!')
+            return redirect('transportation:route_list')
+    else:
+        form = RouteForm()
     
-    return render(request, 'transportation/add_route.html')
+    context = {'form': form, 'action': 'Create'}
+    return render(request, 'transportation/route_form.html', context)
 
+
+@login_required
+@teacher_required
+def route_edit(request, pk):
+    """Edit an existing route"""
+    route = get_object_or_404(Route, pk=pk)
+    
+    if request.method == 'POST':
+        form = RouteForm(request.POST, instance=route)
+        if form.is_valid():
+            route = form.save()
+            messages.success(request, f'Route "{route.route_name}" updated successfully!')
+            return redirect('transportation:route_detail', pk=route.pk)
+    else:
+        form = RouteForm(instance=route)
+    
+    context = {'form': form, 'route': route, 'action': 'Edit'}
+    return render(request, 'transportation/route_form.html', context)
+
+
+@login_required
+@teacher_required
+def route_delete(request, pk):
+    """Delete a route"""
+    route = get_object_or_404(Route, pk=pk)
+    
+    # Check if route has assigned students
+    assigned_count = StudentBusAssignment.objects.filter(route=route, is_active=True).count()
+    if assigned_count > 0:
+        messages.error(request, f'Cannot delete route "{route.route_name}". It has {assigned_count} assigned student(s). Please reassign them first.')
+        return redirect('transportation:route_detail', pk=pk)
+    
+    route_name = route.route_name
+    route.delete()
+    messages.success(request, f'Route "{route_name}" deleted successfully!')
+    return redirect('transportation:route_list')
+
+
+@login_required
+@teacher_required
+def route_detail(request, pk):
+    """View route details"""
+    route = get_object_or_404(Route, pk=pk)
+    assigned_students = StudentBusAssignment.objects.filter(
+        route=route, is_active=True
+    ).select_related('student', 'student__user', 'bus').order_by('student__roll_number')
+    
+    context = {
+        'route': route,
+        'assigned_students': assigned_students,
+    }
+    return render(request, 'transportation/route_detail.html', context)
+
+
+# ============ STUDENT ASSIGNMENT VIEWS ============
+
+@login_required
+@teacher_required
+def student_assignment_list(request):
+    """List all student bus assignments"""
+    assignments = StudentBusAssignment.objects.filter(
+        is_active=True
+    ).select_related('student', 'bus', 'route').order_by('bus__bus_number', 'student__roll_number')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        assignments = assignments.filter(
+            Q(student__roll_number__icontains=search_query) |
+            Q(student__user__first_name__icontains=search_query) |
+            Q(student__user__last_name__icontains=search_query) |
+            Q(bus__bus_number__icontains=search_query) |
+            Q(route__route_name__icontains=search_query)
+        )
+    
+    # Filter by bus
+    bus_filter = request.GET.get('bus', '')
+    if bus_filter:
+        assignments = assignments.filter(bus_id=bus_filter)
+    
+    # Pagination
+    paginator = Paginator(assignments, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get all buses for filter dropdown
+    buses = Bus.objects.filter(is_active=True).order_by('bus_number')
+    
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'buses': buses,
+        'bus_filter': bus_filter,
+    }
+    
+    return render(request, 'transportation/student_assignment_list.html', context)
+
+
+@login_required
+@teacher_required
+def student_assignment_create(request):
+    """Create a new student bus assignment"""
+    bus_id = request.GET.get('bus_id')
+    initial_data = {}
+    preselected_bus = None
+    
+    if bus_id:
+        try:
+            preselected_bus = Bus.objects.get(pk=bus_id)
+            initial_data['bus'] = preselected_bus
+        except Bus.DoesNotExist:
+            pass
+    
+    if request.method == 'POST':
+        form = StudentBusAssignmentForm(request.POST)
+        if form.is_valid():
+            assignment = form.save()
+            messages.success(request, f'Student {assignment.student.roll_number} assigned to bus {assignment.bus.bus_number} successfully!')
+            if bus_id:
+                return redirect('transportation:bus_detail', pk=bus_id)
+            return redirect('transportation:student_assignment_list')
+    else:
+        form = StudentBusAssignmentForm(initial=initial_data)
+    
+    context = {
+        'form': form, 
+        'action': 'Assign Student to Bus',
+        'preselected_bus': preselected_bus
+    }
+    return render(request, 'transportation/student_assignment_form.html', context)
+
+
+@login_required
+@teacher_required
+def student_assignment_edit(request, pk):
+    """Edit a student bus assignment"""
+    assignment = get_object_or_404(StudentBusAssignment, pk=pk)
+    
+    if request.method == 'POST':
+        form = StudentBusAssignmentForm(request.POST, instance=assignment)
+        if form.is_valid():
+            assignment = form.save()
+            messages.success(request, f'Assignment for {assignment.student.roll_number} updated successfully!')
+            return redirect('transportation:student_assignment_list')
+    else:
+        form = StudentBusAssignmentForm(instance=assignment)
+    
+    context = {'form': form, 'assignment': assignment, 'action': 'Edit Assignment'}
+    return render(request, 'transportation/student_assignment_form.html', context)
+
+
+@login_required
+@teacher_required
+def student_assignment_delete(request, pk):
+    """Delete/deactivate a student bus assignment"""
+    assignment = get_object_or_404(StudentBusAssignment, pk=pk)
+    
+    student_roll = assignment.student.roll_number
+    bus_number = assignment.bus.bus_number
+    assignment.delete()
+    
+    messages.success(request, f'Assignment removed for student {student_roll} from bus {bus_number}!')
+    return redirect('transportation:student_assignment_list')
+
+
+# ============ TRANSPORT LOGS ============
 
 @login_required
 def transport_logs(request):
@@ -161,43 +491,136 @@ def transport_logs(request):
     # Filter by user if student
     if hasattr(request.user, 'student_profile'):
         logs = logs.filter(user=request.user)
+        template = 'transportation/student_transport_logs.html'
+    else:
+        template = 'transportation/transport_logs.html'
     
-    # Search and filter functionality
-    search_query = request.GET.get('search', '')
-    if search_query:
-        logs = logs.filter(
-            Q(user__first_name__icontains=search_query) |
-            Q(user__last_name__icontains=search_query) |
-            Q(user__username__icontains=search_query) |
-            Q(bus__bus_number__icontains=search_query) |
-            Q(route__route_name__icontains=search_query)
-        )
-    
-    # Date filter
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-    
-    if date_from:
-        logs = logs.filter(boarding_time__date__gte=date_from)
-    if date_to:
-        logs = logs.filter(boarding_time__date__lte=date_to)
+    # Search and filter functionality (for teachers)
+    if not hasattr(request.user, 'student_profile'):
+        search_query = request.GET.get('search', '')
+        if search_query:
+            logs = logs.filter(
+                Q(user__first_name__icontains=search_query) |
+                Q(user__last_name__icontains=search_query) |
+                Q(user__username__icontains=search_query) |
+                Q(bus__bus_number__icontains=search_query) |
+                Q(route__route_name__icontains=search_query)
+            )
+        
+        # Date filter
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+        
+        if date_from:
+            logs = logs.filter(boarding_time__date__gte=date_from)
+        if date_to:
+            logs = logs.filter(boarding_time__date__lte=date_to)
+    else:
+        search_query = ''
+        date_from = ''
+        date_to = ''
     
     # Pagination
     paginator = Paginator(logs, 20)
     page_number = request.GET.get('page')
-    logs = paginator.get_page(page_number)
+    page_obj = paginator.get_page(page_number)
     
     context = {
-        'logs': logs,
+        'page_obj': page_obj,
         'search_query': search_query,
         'date_from': date_from,
         'date_to': date_to,
     }
     
-    return render(request, 'transportation/transport_logs.html', context)
+    return render(request, template, context)
 
 
-# API Views for NFC Integration
+# ============ STUDENT VIEW ============
+
+@login_required
+@student_required
+def student_transportation_dashboard(request):
+    """Student transportation dashboard showing their assigned bus and usage logs"""
+    try:
+        student = request.user.student_profile
+        assignment = StudentBusAssignment.objects.filter(
+            student=student, is_active=True
+        ).select_related('bus', 'route').first()
+        
+        # Get student's transport logs
+        today = timezone.now().date()
+        this_month = today.replace(day=1)
+        
+        logs_this_month = TransportLog.objects.filter(
+            user=request.user,
+            boarding_time__date__gte=this_month
+        ).count()
+        
+        recent_logs = TransportLog.objects.filter(
+            user=request.user
+        ).select_related('bus', 'route').order_by('-boarding_time')[:10]
+        
+        context = {
+            'assignment': assignment,
+            'logs_this_month': logs_this_month,
+            'recent_logs': recent_logs,
+        }
+    except Exception as e:
+        messages.error(request, f'Error loading dashboard: {str(e)}')
+        context = {
+            'assignment': None,
+            'logs_this_month': 0,
+            'recent_logs': [],
+        }
+    
+    return render(request, 'transportation/student_dashboard.html', context)
+
+
+# ============ ANALYTICS ============
+
+@login_required
+@teacher_required
+def transportation_analytics(request):
+    """Transportation analytics and reports"""
+    today = timezone.now().date()
+    last_week = today - timedelta(days=7)
+    last_month = today - timedelta(days=30)
+    
+    # Daily usage statistics
+    daily_stats = TransportLog.objects.filter(
+        boarding_time__date__gte=last_week
+    ).extra({
+        'day': "date(boarding_time)"
+    }).values('day').annotate(
+        total_rides=Count('id'),
+        unique_users=Count('user', distinct=True)
+    ).order_by('day')
+    
+    # Bus utilization
+    bus_stats = Bus.objects.filter(is_active=True).annotate(
+        monthly_rides=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_month)),
+        weekly_rides=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_week)),
+        assigned_count=Count('assigned_students', filter=Q(assigned_students__is_active=True))
+    ).order_by('-monthly_rides')
+    
+    # Route popularity
+    route_stats = Route.objects.filter(status='active').annotate(
+        monthly_usage=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_month))
+    ).order_by('-monthly_usage')
+    
+    context = {
+        'daily_stats': daily_stats,
+        'bus_stats': bus_stats,
+        'route_stats': route_stats,
+        'today': today,
+        'last_week': last_week,
+        'last_month': last_month,
+    }
+    
+    return render(request, 'transportation/analytics.html', context)
+
+
+# ============ API ENDPOINTS ============
 
 @login_required
 def api_log_transport(request):
@@ -208,13 +631,12 @@ def api_log_transport(request):
             nfc_uid = data.get('nfc_uid')
             bus_id = data.get('bus_id')
             boarding_location = data.get('boarding_location', 'University Gate')
-            action = data.get('action', 'board')  # 'board' or 'alight'
+            action = data.get('action', 'board')
             
             # Find user by NFC UID
             user = None
             user_type = None
             
-            # Check if it's a student
             try:
                 student = Student.objects.get(nfc_uid=nfc_uid)
                 user = student.user
@@ -222,7 +644,6 @@ def api_log_transport(request):
             except Student.DoesNotExist:
                 pass
             
-            # Check if it's a teacher
             if not user:
                 try:
                     teacher = Teacher.objects.get(nfc_uid=nfc_uid)
@@ -233,39 +654,61 @@ def api_log_transport(request):
             
             if not user:
                 return JsonResponse({
-                    'success': False, 
+                    'success': False,
                     'message': 'NFC card not found in system'
                 }, status=404)
             
-            # Get bus and route
             bus = get_object_or_404(Bus, id=bus_id)
             
-            # For boarding, create new log
+            # Get user's assigned route if they're a student
+            route = None
+            if user_type == 'student':
+                try:
+                    assignment = StudentBusAssignment.objects.get(
+                        student=user.student_profile,
+                        is_active=True
+                    )
+                    route = assignment.route
+                except StudentBusAssignment.DoesNotExist:
+                    pass
+            
             if action == 'board':
-                # Check if user is already on board (no alighting time)
                 existing_log = TransportLog.objects.filter(
                     user=user,
-                    bus=bus,
                     alighting_time__isnull=True
                 ).first()
                 
                 if existing_log:
                     return JsonResponse({
                         'success': False,
-                        'message': 'User is already on board this bus'
+                        'message': 'User is already on board a bus'
                     }, status=400)
                 
-                # Create new transport log
                 transport_log = TransportLog.objects.create(
                     user=user,
                     user_type=user_type,
                     nfc_uid=nfc_uid,
                     bus=bus,
-                    route=bus.route if hasattr(bus, 'route') else None,
+                    route=route,
                     boarding_status='boarded',
                     boarding_location=boarding_location,
                     boarding_time=timezone.now()
                 )
+                
+                # Send email notification (non-blocking)
+                try:
+                    send_transport_email(
+                        user=user,
+                        user_type=user_type,
+                        action='board',
+                        bus=bus,
+                        route=route,
+                        timestamp=transport_log.boarding_time,
+                        location=boarding_location
+                    )
+                except Exception as e:
+                    logger.error(f"Transport email notification failed: {str(e)}")
+                    # Continue processing even if email fails
                 
                 return JsonResponse({
                     'success': True,
@@ -273,29 +716,40 @@ def api_log_transport(request):
                     'log_id': transport_log.id
                 })
             
-            # For alighting, update existing log
             elif action == 'alight':
-                # Find the most recent boarding log without alighting time
                 transport_log = TransportLog.objects.filter(
                     user=user,
-                    bus=bus,
                     alighting_time__isnull=True
                 ).order_by('-boarding_time').first()
                 
                 if not transport_log:
                     return JsonResponse({
                         'success': False,
-                        'message': 'No active boarding found for this user on this bus'
+                        'message': 'No active boarding found for this user'
                     }, status=400)
                 
-                # Update with alighting time
                 transport_log.alighting_time = timezone.now()
                 transport_log.boarding_status = 'alighted'
                 transport_log.save()
                 
+                # Send email notification (non-blocking)
+                try:
+                    send_transport_email(
+                        user=user,
+                        user_type=transport_log.user_type,
+                        action='alight',
+                        bus=transport_log.bus,
+                        route=transport_log.route,
+                        timestamp=transport_log.alighting_time,
+                        location=boarding_location  # Use same location variable
+                    )
+                except Exception as e:
+                    logger.error(f"Transport email notification failed: {str(e)}")
+                    # Continue processing even if email fails
+                
                 return JsonResponse({
                     'success': True,
-                    'message': f'{user.get_full_name()} alighted from bus {bus.bus_number}',
+                    'message': f'{user.get_full_name()} alighted from bus {transport_log.bus.bus_number}',
                     'travel_duration': str(transport_log.get_travel_duration())
                 })
             
@@ -318,24 +772,20 @@ def api_log_transport(request):
 
 @login_required
 def api_bus_status(request, bus_id):
-    """API endpoint to get current bus status and passenger count"""
+    """API endpoint to get current bus status"""
     try:
         bus = get_object_or_404(Bus, id=bus_id)
-        
-        # Get current passengers (boarded but not alighted)
         current_passengers = TransportLog.objects.filter(
             bus=bus,
             alighting_time__isnull=True
         ).select_related('user')
         
-        passengers_data = []
-        for log in current_passengers:
-            passengers_data.append({
-                'name': log.user.get_full_name(),
-                'user_type': log.user_type,
-                'boarding_time': log.boarding_time.isoformat(),
-                'boarding_location': log.boarding_location
-            })
+        passengers_data = [{
+            'name': log.user.get_full_name(),
+            'user_type': log.user_type,
+            'boarding_time': log.boarding_time.isoformat(),
+            'boarding_location': log.boarding_location
+        } for log in current_passengers]
         
         return JsonResponse({
             'success': True,
@@ -352,87 +802,3 @@ def api_bus_status(request, bus_id):
             'success': False,
             'message': f'Error: {str(e)}'
         }, status=500)
-
-
-@login_required
-@teacher_required
-def transportation_analytics(request):
-    """Transportation analytics and reports"""
-    today = timezone.now().date()
-    last_week = today - timedelta(days=7)
-    last_month = today - timedelta(days=30)
-    
-    # Daily usage statistics
-    daily_stats = TransportLog.objects.filter(
-        boarding_time__date__gte=last_week
-    ).extra({
-        'day': "date(boarding_time)"
-    }).values('day').annotate(
-        total_rides=Count('id'),
-        unique_users=Count('user', distinct=True)
-    ).order_by('day')
-    
-    # Calculate average rides per user
-    for stat in daily_stats:
-        if stat['unique_users'] > 0:
-            stat['avg_rides_per_user'] = stat['total_rides'] / stat['unique_users']
-        else:
-            stat['avg_rides_per_user'] = 0
-    
-    # Bus utilization
-    bus_stats = Bus.objects.filter(is_active=True).annotate(
-        monthly_rides=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_month)),
-        weekly_rides=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_week))
-    ).order_by('-monthly_rides')
-    
-    # Calculate occupancy rate and progress bar width for each bus
-    max_bus_rides = max([bus.monthly_rides for bus in bus_stats]) if bus_stats else 1
-    for bus in bus_stats:
-        if bus.capacity > 0:
-            # Calculate average daily usage for the month
-            avg_daily_usage = bus.monthly_rides / 30
-            bus.occupancy_rate = (avg_daily_usage / bus.capacity) * 100
-        else:
-            bus.occupancy_rate = 0
-        # Calculate progress bar width (0-100%)
-        bus.progress_width = (bus.monthly_rides / max_bus_rides * 100) if max_bus_rides > 0 else 0
-    
-    # Route popularity
-    route_stats = Route.objects.filter(status='active').annotate(
-        monthly_usage=Count('transport_logs', filter=Q(transport_logs__boarding_time__date__gte=last_month))
-    ).order_by('-monthly_usage')
-    
-    # Calculate progress bar width for routes
-    max_route_usage = max([route.monthly_usage for route in route_stats]) if route_stats else 1
-    for route in route_stats:
-        route.progress_width = (route.monthly_usage / max_route_usage * 100) if max_route_usage > 0 else 0
-    
-    # Peak hours analysis
-    peak_hours = TransportLog.objects.filter(
-        boarding_time__date__gte=last_week
-    ).extra({
-        'hour': "strftime('%%H', boarding_time)"
-    }).values('hour').annotate(
-        rides_count=Count('id')
-    ).order_by('-rides_count')
-    
-    # Calculate progress bar width for peak hours and avg rides per hour
-    max_hour_rides = max([hour['rides_count'] for hour in peak_hours]) if peak_hours else 1
-    total_rides_in_peak = sum([hour['rides_count'] for hour in peak_hours])
-    avg_rides_per_hour = (total_rides_in_peak / len(peak_hours)) if peak_hours else 0
-    
-    for hour in peak_hours:
-        hour['progress_width'] = (hour['rides_count'] / max_hour_rides * 100) if max_hour_rides > 0 else 0
-    
-    context = {
-        'daily_stats': daily_stats,
-        'bus_stats': bus_stats,
-        'route_stats': route_stats,
-        'peak_hours': peak_hours,
-        'avg_rides_per_hour': avg_rides_per_hour,
-        'today': today,
-        'last_week': last_week,
-        'last_month': last_month,
-    }
-    
-    return render(request, 'transportation/analytics.html', context)

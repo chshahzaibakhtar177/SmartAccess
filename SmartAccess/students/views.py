@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q
 from django.core.paginator import Paginator
+from django.conf import settings
 from datetime import timedelta
 import requests
 import json
@@ -268,8 +269,8 @@ def remove_card(request, student_id):
 def request_card_scan_from_pi(roll_number):
     """Send request to Raspberry Pi to scan a card for assignment"""
     try:
-        # Replace with your actual Pi IP
-        pi_url = "http://172.20.10.2:5000/scan-for-assignment"
+        # Get Pi URL from Django settings (centralized configuration)
+        pi_url = f"{settings.RASPBERRY_PI_URL}/scan-for-assignment"
         payload = {
             'roll_number': roll_number,
             'action': 'assign_card'

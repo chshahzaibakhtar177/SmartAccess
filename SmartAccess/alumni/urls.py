@@ -12,8 +12,9 @@ urlpatterns = [
     path('profile/edit/', views.edit_alumni_profile, name='edit_profile'),
     
     # Alumni Registration (for converting students to alumni)
-    path('register/', views.register_alumni, name='register'),
+    path('select-students/', views.select_students_for_alumni, name='select_students_for_alumni'),
     path('convert-student/<int:student_id>/', views.convert_student_to_alumni, name='convert_student'),
+    path('revert-alumni/<int:student_id>/', views.revert_alumni_to_student, name='revert_alumni'),
     
     # Alumni Event Participation
     path('events/', views.alumni_events, name='events'),

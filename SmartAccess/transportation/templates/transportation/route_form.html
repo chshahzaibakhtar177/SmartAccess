@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} Route - SmartAccess{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-route"></i> {{ action }} Route
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Route Name -->
+                            <div class="col-md-12 mb-3">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">
+                                    Route Name <span class="text-danger">*</span>
+                                </label>
+                                {{ form.name }}
+                                {% if form.name.errors %}
+                                    <div class="text-danger small">{{ form.name.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">E.g., "North Campus Route" or "Downtown Express"</small>
+                            </div>
+
+                            <!-- Distance -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.distance.id_for_label }}" class="form-label">
+                                    Distance (km)
+                                </label>
+                                {{ form.distance }}
+                                {% if form.distance.errors %}
+                                    <div class="text-danger small">{{ form.distance.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Total route distance</small>
+                            </div>
+
+                            <!-- Estimated Time -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.estimated_time.id_for_label }}" class="form-label">
+                                    Estimated Time
+                                </label>
+                                {{ form.estimated_time }}
+                                {% if form.estimated_time.errors %}
+                                    <div class="text-danger small">{{ form.estimated_time.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Format: HH:MM:SS (e.g., 01:30:00)</small>
+                            </div>
+
+                            <!-- Start Location -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.start_location.id_for_label }}" class="form-label">
+                                    Start Location
+                                </label>
+                                {{ form.start_location }}
+                                {% if form.start_location.errors %}
+                                    <div class="text-danger small">{{ form.start_location.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- End Location -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.end_location.id_for_label }}" class="form-label">
+                                    End Location
+                                </label>
+                                {{ form.end_location }}
+                                {% if form.end_location.errors %}
+                                    <div class="text-danger small">{{ form.end_location.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Stops -->
+                            <div class="col-md-12 mb-3">
+                                <label for="{{ form.stops.id_for_label }}" class="form-label">
+                                    Stops
+                                </label>
+                                {{ form.stops }}
+                                {% if form.stops.errors %}
+                                    <div class="text-danger small">{{ form.stops.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Comma-separated list of stop locations</small>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="col-12 mb-3">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">
+                                    Description
+                                </label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                    <div class="text-danger small">{{ form.description.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Additional information about this route</small>
+                            </div>
+
+                            <!-- Is Active -->
+                            <div class="col-12 mb-3">
+                                <div class="form-check">
+                                    {{ form.is_active }}
+                                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                        Route is Active
+                                    </label>
+                                </div>
+                                {% if form.is_active.errors %}
+                                    <div class="text-danger small">{{ form.is_active.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Only active routes can be assigned to buses</small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <a href="{% url 'transportation:route_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ action }} Route
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if route %}
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6 class="text-muted">Current Status</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <p class="mb-0">
+                                <strong>{{ route.buses.count }}</strong> bus{{ route.buses.count|pluralize:"es" }} assigned
+                            </p>
+                        </div>
+                        <div class="col-6">
+                            <p class="mb-0">
+                                Created: {{ route.created_at|date:"M d, Y" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+{{ form.media }}
+</style>
+{% endblock %}

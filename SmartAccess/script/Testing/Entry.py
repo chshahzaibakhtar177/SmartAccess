@@ -56,7 +56,7 @@ def send_to_django(uid_hex):
         response = requests.post(
             API_ENDPOINT, 
             json=payload, 
-            timeout=5,
+            timeout=15,  # Increased timeout for email sending
             headers={'Content-Type': 'application/json'}
         )
         
@@ -113,7 +113,7 @@ def main():
                     except Exception as e:
                         print(f"⚠️  Could not read block data: {e}")
                 else:
-                    print("🔒 Authentication failed (using default for attendance)")
+                    print("ℹ️  Authentication not required (using UID for attendance)")
 
                 # Send to Django
                 success = send_to_django(uid_hex)

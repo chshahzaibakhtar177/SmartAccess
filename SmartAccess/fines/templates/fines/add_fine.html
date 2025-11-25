@@ -202,9 +202,8 @@
         $('#scanMessage').hide();
         $('#startScanBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Waiting for card...');
         
-        // Send request to Raspberry Pi to scan card
-        // Replace with your Pi's IP address
-        const piUrl = 'http://172.20.10.2:5000/scan-for-student';
+        // Send request to Raspberry Pi to scan card (URL from Django settings)
+        const piUrl = '{{ RASPBERRY_PI_URL }}/scan-for-student';
         
         fetch(piUrl, {
             method: 'POST',

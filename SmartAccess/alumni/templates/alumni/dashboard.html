@@ -151,8 +151,8 @@
                             <tbody>
                                 {% for participation in recent_events %}
                                 <tr>
-                                    <td>{{ participation.event.name }}</td>
-                                    <td>{{ participation.event.event_date|date:"M d, Y" }}</td>
+                                    <td>{{ participation.event.title }}</td>
+                                    <td>{{ participation.event.start_datetime|date:"M d, Y" }}</td>
                                     <td>{{ participation.participation_date|date:"M d, Y" }}</td>
                                     <td>
                                         <span class="badge bg-success">Registered</span>
